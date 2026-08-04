@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SETI 太阳系随机器</title>
+  <link rel="stylesheet" href="./style.css?v=main-column-gaps-3">
+</head>
+<body>
+  <div class="start-screen" id="start-screen" aria-label="开始界面">
+    <div class="start-screen-panel">
+      <div class="start-screen-actions" aria-label="游戏入口">
+        <div class="start-screen-primary-actions">
+          <button class="start-screen-start-button" type="button" id="start-screen-start-button">开始游戏</button>
+          <button class="start-screen-start-button start-screen-daily-button" type="button" id="start-screen-daily-button" title="按今天的日期使用固定随机种子">开始每日</button>
+        </div>
+        <button class="start-screen-continue-button" type="button" id="start-screen-continue-button" disabled aria-disabled="true" hidden>继续游戏(beta)</button>
+      </div>
+      <div class="start-screen-options" aria-label="开始选项">
+        <div class="start-screen-option-row">
+          <label class="start-screen-option start-screen-compact-option" for="start-ai-difficulty">
+            <span class="start-screen-option-label">电脑难度</span>
+            <select class="start-screen-select" id="start-ai-difficulty">
+              <option value="laughable">令人发笑的</option>
+              <option value="weak_start">开始弱小的</option>
+            </select>
+          </label>
+          <label class="start-screen-option start-screen-compact-option" for="start-player-count">
+            <span class="start-screen-option-label">人数</span>
+            <select class="start-screen-select" id="start-player-count">
+              <option value="4" selected>4人局</option>
+              <option value="3">3人局</option>
+            </select>
+          </label>
+        </div>
+        <label class="start-screen-option start-screen-toggle-option" for="start-debug-enabled">
+          <span class="start-screen-option-label">调试功能</span>
+          <input class="start-screen-checkbox" type="checkbox" id="start-debug-enabled">
+          <span class="start-screen-toggle-text" id="start-debug-toggle-text" aria-hidden="true">关闭</span>
+        </label>
+        <label class="start-screen-option start-screen-toggle-option" for="start-action-log-enabled">
+          <span class="start-screen-option-label">开启行动日志</span>
+          <input class="start-screen-checkbox" type="checkbox" id="start-action-log-enabled" checked>
+          <span class="start-screen-toggle-text" id="start-action-log-toggle-text" aria-hidden="true">开启</span>
+        </label>
+        <fieldset class="start-screen-alien-option" aria-label="外星人">
+          <legend class="visually-hidden">外星人</legend>
+          <div class="start-screen-option-label start-screen-option-title" aria-hidden="true">外星人</div>
+          <div class="start-screen-choice-grid start-screen-alien-grid" id="start-alien-options">
+            <label class="start-screen-alien-choice" for="start-alien-jiuzhe">
+              <input class="start-screen-checkbox" type="checkbox" id="start-alien-jiuzhe" data-start-alien-id="九折" checked>
+              <span>九折</span>
+            </label>
+            <label class="start-screen-alien-choice" for="start-alien-banrenma">
+              <input class="start-screen-checkbox" type="checkbox" id="start-alien-banrenma" data-start-alien-id="半人马" checked>
+              <span>半人马</span>
+            </label>
+            <label class="start-screen-alien-choice" for="start-alien-aomomo">
+              <input class="start-screen-checkbox" type="checkbox" id="start-alien-aomomo" data-start-alien-id="奥陌陌" checked>
+              <span>奥陌陌</span>
+            </label>
+            <label class="start-screen-alien-choice" for="start-alien-yichangdian">
+              <input class="start-screen-checkbox" type="checkbox" id="start-alien-yichangdian" data-start-alien-id="异常点" checked>
+              <span>异常点</span>
+            </label>
+            <label class="start-screen-alien-choice" for="start-alien-fangzhou">
+              <input class="start-screen-checkbox" type="checkbox" id="start-alien-fangzhou" data-start-alien-id="方舟" checked>
+              <span>方舟</span>
+            </label>
+            <label class="start-screen-alien-choice" for="start-alien-runezu">
+              <input class="start-screen-checkbox" type="checkbox" id="start-alien-runezu" data-start-alien-id="符文族" checked>
+              <span>符文族</span>
+            </label>
+            <label class="start-screen-alien-choice" for="start-alien-chong">
+              <input class="start-screen-checkbox" type="checkbox" id="start-alien-chong" data-start-alien-id="虫" checked>
+              <span>虫</span>
+            </label>
+            <label class="start-screen-alien-choice" for="start-alien-amiba">
+              <input class="start-screen-checkbox" type="checkbox" id="start-alien-amiba" data-start-alien-id="阿米巴" checked>
+              <span>阿米巴</span>
+            </label>
+          </div>
+        </fieldset>
+        <fieldset class="start-screen-alien-option start-screen-company-option" aria-label="公司">
+          <legend class="visually-hidden">公司</legend>
+          <div class="start-screen-option-label start-screen-option-title" aria-hidden="true">公司</div>
+          <div class="start-screen-choice-grid start-screen-company-grid" id="start-industry-options">
+            <label class="start-screen-alien-choice start-screen-company-choice" for="start-industry-stratus">
+              <input class="start-screen-checkbox" type="checkbox" id="start-industry-stratus" data-start-industry-label="层云核心" checked>
+              <span>层云核心</span>
+            </label>
+            <label class="start-screen-alien-choice start-screen-company-choice" for="start-industry-fenwick">
+              <input class="start-screen-checkbox" type="checkbox" id="start-industry-fenwick" data-start-industry-label="芬威克研究中心" checked>
+              <span>芬威克研究中心</span>
+            </label>
+            <label class="start-screen-alien-choice start-screen-company-choice" for="start-industry-helios">
+              <input class="start-screen-checkbox" type="checkbox" id="start-industry-helios" data-start-industry-label="赫利昂联合体" checked>
+              <span>赫利昂联合体</span>
+            </label>
+            <label class="start-screen-alien-choice start-screen-company-choice" for="start-industry-huanyu">
+              <input class="start-screen-checkbox" type="checkbox" id="start-industry-huanyu" data-start-industry-label="寰宇动力" checked>
+              <span>寰宇动力</span>
+            </label>
+            <label class="start-screen-alien-choice start-screen-company-choice" for="start-industry-mission">
+              <input class="start-screen-checkbox" type="checkbox" id="start-industry-mission" data-start-industry-label="任务中继站" checked>
+              <span>任务中继站</span>
+            </label>
+            <label class="start-screen-alien-choice start-screen-company-choice" for="start-industry-sentinel">
+              <input class="start-screen-checkbox" type="checkbox" id="start-industry-sentinel" data-start-industry-label="哨兵探测网络" checked>
+              <span>哨兵探测网络</span>
+            </label>
+            <label class="start-screen-alien-choice start-screen-company-choice" for="start-industry-deepspace">
+              <input class="start-screen-checkbox" type="checkbox" id="start-industry-deepspace" data-start-industry-label="深空探测" checked>
+              <span>深空探测</span>
+            </label>
+            <label class="start-screen-alien-choice start-screen-company-choice" for="start-industry-turing">
+              <input class="start-screen-checkbox" type="checkbox" id="start-industry-turing" data-start-industry-label="图灵系统" checked>
+              <span>图灵系统</span>
+            </label>
+            <label class="start-screen-alien-choice start-screen-company-choice" for="start-industry-future-span">
+              <input class="start-screen-checkbox" type="checkbox" id="start-industry-future-span" data-start-industry-label="未来跨度研究所" checked>
+              <span>未来跨度研究所</span>
+            </label>
+            <label class="start-screen-alien-choice start-screen-company-choice" for="start-industry-alien-lab">
+              <input class="start-screen-checkbox" type="checkbox" id="start-industry-alien-lab" data-start-industry-label="异星实验室" checked>
+              <span>异星实验室</span>
+            </label>
+            <label class="start-screen-alien-choice start-screen-company-choice" for="start-industry-strategy">
+              <input class="start-screen-checkbox" type="checkbox" id="start-industry-strategy" data-start-industry-label="宇宙战略集团" checked>
+              <span>宇宙战略集团</span>
+            </label>
+            <label class="start-screen-alien-choice start-screen-company-choice" for="start-industry-fundamentalism">
+              <input class="start-screen-checkbox" type="checkbox" id="start-industry-fundamentalism" data-start-industry-label="原教旨主义" checked>
+              <span>原教旨主义</span>
+            </label>
+            <label class="start-screen-alien-choice start-screen-company-choice" for="start-industry-pirates">
+              <input class="start-screen-checkbox" type="checkbox" id="start-industry-pirates" data-start-industry-label="星际海盗" checked>
+              <span>星际海盗</span>
+            </label>
+          </div>
+        </fieldset>
+      </div>
+    </div>
+  </div>
+
+  <div class="settlement-interaction-shield" id="settlement-interaction-shield" hidden aria-hidden="true"></div>
+  <button class="settlement-resume-button" id="settlement-resume-button" type="button" hidden>继续结算</button>
+
+  <div class="app-wrap debug-collapsed log-collapsed debug-tools-disabled state-log-disabled" id="app-wrap">
+    <aside class="table-column table-column-left" aria-label="左侧游戏区域">
+      <section class="round-status-panel" aria-label="轮次信息">
+        <div class="round-status-frame">
+          <img class="round-status-bg" src="../assets/core/rotate.png" alt="" width="1984" height="2122" decoding="async" aria-hidden="true">
+          <img
+            class="round-status-token"
+            id="round-status-token"
+            src="../assets/tokens/rotate_state.png"
+            alt=""
+            width="512"
+            height="512"
+            decoding="async"
+            aria-hidden="true"
+          >
+          <div class="round-status-circle">
+            <span class="round-status-value" id="round-status-round">第 1 轮</span>
+            <span class="round-status-value round-status-turn" id="round-status-turn">第 1 回合</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="table-panel final-score-panel" aria-label="终局计分">
+        <div class="panel-title">终局计分</div>
+        <div class="final-score-grid" id="final-score-grid">
+          <button class="final-score-tile-wrap" type="button" data-final-id="a" aria-label="终局计分 A">
+            <img class="final-score-tile" data-final-id="a" src="../assets/final/final_a1.png" alt="终局计分 A1" width="747" height="1040" decoding="async">
+            <span class="final-score-token-layer" aria-hidden="true"></span>
+          </button>
+          <button class="final-score-tile-wrap" type="button" data-final-id="b" aria-label="终局计分 B">
+            <img class="final-score-tile" data-final-id="b" src="../assets/final/final_b1.png" alt="终局计分 B1" width="747" height="1040" decoding="async">
+            <span class="final-score-token-layer" aria-hidden="true"></span>
+          </button>
+          <button class="final-score-tile-wrap" type="button" data-final-id="c" aria-label="终局计分 C">
+            <img class="final-score-tile" data-final-id="c" src="../assets/final/final_c1.png" alt="终局计分 C1" width="747" height="1040" decoding="async">
+            <span class="final-score-token-layer" aria-hidden="true"></span>
+          </button>
+          <button class="final-score-tile-wrap" type="button" data-final-id="d" aria-label="终局计分 D">
+            <img class="final-score-tile" data-final-id="d" src="../assets/final/final_d1.png" alt="终局计分 D1" width="747" height="1040" decoding="async">
+            <span class="final-score-token-layer" aria-hidden="true"></span>
+          </button>
+        </div>
+      </section>
+
+      <section class="table-panel alien-panel" aria-label="外星人 1" data-alien-slot="1">
+        <div class="alien-jiuzhe-thresholds" data-alien-slot="1" hidden></div>
+        <div class="alien-banrenma-scoremarks" data-alien-slot="1" hidden></div>
+        <div class="alien-stack">
+          <div class="alien-face-wrap">
+            <img class="alien-back" src="../assets/aliens/back.png" alt="外星人 1 牌背" width="777" height="1415" decoding="async">
+            <div class="alien-jiuzhe-trace-layer" data-alien-slot="1" aria-hidden="true"></div>
+          </div>
+          <div class="alien-state-wrap">
+            <img class="alien-state" src="../assets/aliens/state1.png" alt="外星人 1 状态" width="443" height="208" decoding="async">
+            <div class="alien-trace-layer" data-alien-slot="1" aria-hidden="true"></div>
+          </div>
+          <div class="alien-yichangdian-card-area" data-alien-slot="1" hidden></div>
+          <div class="alien-fangzhou-card-area" data-alien-slot="1" hidden></div>
+          <div class="alien-banrenma-card-area" data-alien-slot="1" hidden></div>
+          <div class="alien-chong-card-area" data-alien-slot="1" hidden></div>
+          <div class="alien-amiba-card-area" data-alien-slot="1" hidden></div>
+          <div class="alien-aomomo-card-area" data-alien-slot="1" hidden></div>
+          <div class="alien-runezu-card-area" data-alien-slot="1" hidden></div>
+        </div>
+      </section>
+
+      <section class="table-panel alien-panel" aria-label="外星人 2" data-alien-slot="2">
+        <div class="alien-jiuzhe-thresholds" data-alien-slot="2" hidden></div>
+        <div class="alien-banrenma-scoremarks" data-alien-slot="2" hidden></div>
+        <div class="alien-stack">
+          <div class="alien-face-wrap">
+            <img class="alien-back" src="../assets/aliens/back.png" alt="外星人 2 牌背" width="777" height="1415" decoding="async">
+            <div class="alien-jiuzhe-trace-layer" data-alien-slot="2" aria-hidden="true"></div>
+          </div>
+          <div class="alien-state-wrap">
+            <img class="alien-state" src="../assets/aliens/state2.png" alt="外星人 2 状态" width="443" height="208" decoding="async">
+            <div class="alien-trace-layer" data-alien-slot="2" aria-hidden="true"></div>
+          </div>
+          <div class="alien-yichangdian-card-area" data-alien-slot="2" hidden></div>
+          <div class="alien-fangzhou-card-area" data-alien-slot="2" hidden></div>
+          <div class="alien-banrenma-card-area" data-alien-slot="2" hidden></div>
+          <div class="alien-chong-card-area" data-alien-slot="2" hidden></div>
+          <div class="alien-amiba-card-area" data-alien-slot="2" hidden></div>
+          <div class="alien-aomomo-card-area" data-alien-slot="2" hidden></div>
+          <div class="alien-runezu-card-area" data-alien-slot="2" hidden></div>
+        </div>
+      </section>
+    </aside>
+
+    <div class="tech-blue-slot-overlay" id="tech-blue-slot-overlay" data-settlement-minimizable="tech-blue-slot" hidden>
+      <div class="tech-blue-slot-dialog" data-settlement-minimize-host role="dialog" aria-modal="true" aria-labelledby="tech-blue-slot-title">
+        <p class="tech-blue-slot-title" id="tech-blue-slot-title">选择蓝色科技放置位置</p>
+        <p class="tech-blue-slot-subtitle" id="tech-blue-slot-subtitle"></p>
+        <div class="tech-blue-slot-actions" id="tech-blue-slot-actions"></div>
+        <button class="tech-blue-slot-cancel" type="button" id="tech-blue-slot-cancel">取消</button>
+      </div>
+    </div>
+
+    <div class="tech-selection-backdrop" id="tech-selection-backdrop" hidden aria-hidden="true"></div>
+    <div class="card-selection-backdrop" id="card-selection-backdrop" hidden aria-hidden="true"></div>
+    <div class="discard-selection-backdrop" id="discard-selection-backdrop" hidden aria-hidden="true"></div>
+
+    <div class="pass-reserve-selection-overlay" id="pass-reserve-selection-overlay" hidden aria-hidden="true">
+      <div class="pass-reserve-selection-dialog" role="dialog" aria-modal="true" aria-labelledby="pass-reserve-selection-title">
+        <div class="pass-reserve-selection-header">
+          <div class="pass-reserve-selection-title" id="pass-reserve-selection-title">PASS 精选</div>
+          <div class="pass-reserve-selection-subtitle" id="pass-reserve-selection-subtitle"></div>
+        </div>
+        <div class="pass-reserve-selection-grid" id="pass-reserve-selection-grid"></div>
+        <div class="pass-reserve-selection-footer">
+          <div class="pass-reserve-selection-status" id="pass-reserve-selection-status"></div>
+          <button class="pass-reserve-selection-confirm" type="button" id="pass-reserve-selection-confirm" disabled>确认选择</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="action-briefing-overlay" id="action-briefing-overlay" hidden aria-hidden="true">
+      <div class="action-briefing-dialog" role="dialog" aria-modal="true" aria-labelledby="action-briefing-title">
+        <div class="action-briefing-header">
+          <div class="action-briefing-title" id="action-briefing-title">电脑主要行动简报</div>
+        </div>
+        <div class="action-briefing-round-label" id="action-briefing-round-label" hidden></div>
+        <ol class="action-briefing-list" id="action-briefing-list"></ol>
+        <div class="action-briefing-footer">
+          <button class="action-briefing-detail-log" type="button" id="action-briefing-detail-log">打开详细日志</button>
+          <button class="action-briefing-confirm" type="button" id="action-briefing-confirm">确定</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="data-place-overlay" id="data-place-overlay" data-settlement-minimizable="data-place" hidden>
+      <div class="data-place-dialog" data-settlement-minimize-host role="dialog" aria-modal="true" aria-labelledby="data-place-title">
+        <p class="data-place-title" id="data-place-title">选择数据放置位置</p>
+        <p class="data-place-subtitle" id="data-place-subtitle"></p>
+        <div class="data-place-actions" id="data-place-actions"></div>
+        <button class="data-place-cancel" type="button" id="data-place-cancel">取消</button>
+      </div>
+    </div>
+
+    <div class="scan-target-overlay" id="scan-target-overlay" data-settlement-minimizable="scan-target" hidden>
+      <div class="scan-target-dialog" data-settlement-minimize-host role="dialog" aria-modal="true" aria-labelledby="scan-target-title">
+        <p class="scan-target-title" id="scan-target-title">选择扫描目标</p>
+        <p class="scan-target-subtitle" id="scan-target-subtitle"></p>
+        <div class="scan-target-actions" id="scan-target-actions"></div>
+        <button class="scan-target-cancel" type="button" id="scan-target-cancel">取消</button>
+      </div>
+    </div>
+
+    <div class="scan-target-overlay" id="alien-trace-overlay" data-settlement-minimizable="alien-trace" hidden>
+      <div class="scan-target-dialog" data-settlement-minimize-host role="dialog" aria-modal="true" aria-labelledby="alien-trace-title">
+        <p class="scan-target-title" id="alien-trace-title">获取外星人标记</p>
+        <p class="scan-target-subtitle" id="alien-trace-subtitle">选择外星人及痕迹颜色；首标记位空缺时自动放置，否则追加到额外痕迹位。</p>
+        <div class="scan-target-actions" id="alien-trace-actions"></div>
+        <button class="scan-target-cancel" type="button" id="alien-trace-cancel">取消</button>
+      </div>
+    </div>
+
+    <div class="scan-action-4-overlay" id="scan-action-4-overlay" data-settlement-minimizable="scan-action-4" hidden>
+      <div class="scan-target-dialog" data-settlement-minimize-host role="dialog" aria-modal="true" aria-labelledby="scan-action-4-title">
+        <p class="scan-target-title" id="scan-action-4-title">紫4扫描效果</p>
+        <p class="scan-target-subtitle" id="scan-action-4-subtitle">选择发射或移动，或取消跳过此效果。</p>
+        <div class="scan-target-actions" id="scan-action-4-actions"></div>
+        <button class="scan-target-cancel" type="button" id="scan-action-4-cancel">取消</button>
+      </div>
+    </div>
+
+    <div class="land-target-overlay" id="land-target-overlay" data-settlement-minimizable="land-target" hidden>
+      <div class="land-target-dialog" data-settlement-minimize-host role="dialog" aria-modal="true" aria-labelledby="land-target-title">
+        <p class="land-target-title" id="land-target-title">选择登陆目标</p>
+        <label class="land-target-label" for="land-target-select">登陆到</label>
+        <select class="land-target-select" id="land-target-select"></select>
+        <div class="land-target-actions">
+          <button class="land-target-button land-target-button-primary" type="button" id="land-target-confirm">确认登陆</button>
+          <button class="land-target-button" type="button" id="land-target-cancel">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <main class="board-column">
+      <section class="player-command" id="player-command" aria-label="当前玩家">
+        <div class="player-stats" id="player-stats" aria-live="polite"></div>
+        <div class="action-bar" id="action-bar" aria-label="行动">
+          <div class="action-bar-main" id="action-bar-main">
+            <button class="action-button action-button-compact action-button-primary" type="button" id="action-launch-button" aria-label="发射">
+              <img class="action-button-icon" src="../assets/symbol/effect/launch.webp" alt="" aria-hidden="true">
+            </button>
+            <button class="action-button action-button-compact" type="button" id="action-orbit-button" aria-label="环绕">
+              <img class="action-button-icon" src="../assets/symbol/effect/orbit.webp" alt="" aria-hidden="true">
+            </button>
+            <button class="action-button action-button-compact" type="button" id="action-land-button" aria-label="登陆">
+              <img class="action-button-icon" src="../assets/symbol/effect/land.webp" alt="" aria-hidden="true">
+            </button>
+            <button class="action-button action-button-compact" type="button" id="action-scan-button" aria-label="扫描">
+              <img class="action-button-icon" src="../assets/symbol/effect/scan_action.webp" alt="" aria-hidden="true">
+            </button>
+            <button class="action-button action-button-compact" type="button" id="action-analyze-button" aria-label="分析">
+              <img class="action-button-icon" src="../assets/symbol/effect/analyze_data.webp" alt="" aria-hidden="true">
+            </button>
+            <button class="action-button action-button-compact" type="button" id="action-play-card-button" aria-label="打牌">
+              <img class="action-button-icon" src="../assets/symbol/effect/play_card.png" alt="" aria-hidden="true">
+            </button>
+            <button class="action-button action-button-compact" type="button" id="action-research-tech-button" aria-label="科技">
+              <img class="action-button-icon" src="../assets/symbol/effect/research_tech.webp" alt="" aria-hidden="true">
+            </button>
+            <button class="action-button action-button-compact action-button-text" type="button" id="action-quick-button" aria-expanded="false" aria-controls="quick-actions-panel">快速</button>
+          </div>
+          <div class="action-bar-turn" id="action-bar-turn">
+            <button class="action-button action-button-text" type="button" id="action-pass-button" disabled aria-label="本回合 PASS">PASS</button>
+            <button class="action-button action-button-text" type="button" id="action-confirm-button" disabled aria-label="回合结束">回合结束</button>
+            <button class="action-button action-button-text" type="button" id="action-undo-button" disabled aria-label="撤销行动">撤销</button>
+          </div>
+        </div>
+        <div class="action-effect-bar" id="action-effect-bar" hidden aria-label="效果触发">
+          <div class="action-effect-list" id="action-effect-list"></div>
+          <button class="action-effect-skip-button" type="button" id="action-effect-skip-button" hidden aria-label="跳过当前效果">跳过</button>
+        </div>
+        <div class="quick-actions-panel" id="quick-actions-panel" hidden aria-label="快速行动">
+          <div class="quick-actions-row">
+            <span class="quick-actions-label">兑换</span>
+            <div class="quick-actions-trades" id="quick-actions-trades">
+              <button class="quick-trade-button" type="button" data-quick-trade="credits-for-energy" aria-label="2信用点换1能量">
+                <span class="quick-trade-count">2</span>
+                <img class="quick-trade-icon" src="../assets/symbol/effect/credits.webp" alt="" aria-hidden="true">
+                <span class="quick-trade-arrow" aria-hidden="true">-&gt;</span>
+                <img class="quick-trade-icon" src="../assets/symbol/effect/energy.webp" alt="" aria-hidden="true">
+              </button>
+              <button class="quick-trade-button" type="button" data-quick-trade="credits-for-card" aria-label="2信用点换1张牌">
+                <span class="quick-trade-count">2</span>
+                <img class="quick-trade-icon" src="../assets/symbol/effect/credits.webp" alt="" aria-hidden="true">
+                <span class="quick-trade-arrow" aria-hidden="true">-&gt;</span>
+                <img class="quick-trade-icon" src="../assets/symbol/effect/card.webp" alt="" aria-hidden="true">
+              </button>
+              <button class="quick-trade-button" type="button" data-quick-trade="cards-for-credit" aria-label="2张牌换1信用点">
+                <span class="quick-trade-count">2</span>
+                <img class="quick-trade-icon" src="../assets/symbol/effect/card.webp" alt="" aria-hidden="true">
+                <span class="quick-trade-arrow" aria-hidden="true">-&gt;</span>
+                <img class="quick-trade-icon" src="../assets/symbol/effect/credits.webp" alt="" aria-hidden="true">
+              </button>
+              <button class="quick-trade-button" type="button" data-quick-trade="cards-for-energy" aria-label="2张牌换1能量">
+                <span class="quick-trade-count">2</span>
+                <img class="quick-trade-icon" src="../assets/symbol/effect/card.webp" alt="" aria-hidden="true">
+                <span class="quick-trade-arrow" aria-hidden="true">-&gt;</span>
+                <img class="quick-trade-icon" src="../assets/symbol/effect/energy.webp" alt="" aria-hidden="true">
+              </button>
+              <button class="quick-trade-button" type="button" data-quick-trade="cards-for-pick-card" aria-label="2张牌换精选1张牌">
+                <span class="quick-trade-count">2</span>
+                <img class="quick-trade-icon" src="../assets/symbol/effect/card.webp" alt="" aria-hidden="true">
+                <span class="quick-trade-arrow" aria-hidden="true">-&gt;</span>
+                <img class="quick-trade-icon" src="../assets/symbol/effect/choose_card.webp" alt="" aria-hidden="true">
+              </button>
+              <button class="quick-trade-button" type="button" data-quick-trade="energy-for-card" aria-label="2能量换1张牌">
+                <span class="quick-trade-count">2</span>
+                <img class="quick-trade-icon" src="../assets/symbol/effect/energy.webp" alt="" aria-hidden="true">
+                <span class="quick-trade-arrow" aria-hidden="true">-&gt;</span>
+                <img class="quick-trade-icon" src="../assets/symbol/effect/card.webp" alt="" aria-hidden="true">
+              </button>
+              <button class="quick-trade-button" type="button" data-quick-trade="energy-for-credit" aria-label="2能量换1信用点">
+                <span class="quick-trade-count">2</span>
+                <img class="quick-trade-icon" src="../assets/symbol/effect/energy.webp" alt="" aria-hidden="true">
+                <span class="quick-trade-arrow" aria-hidden="true">-&gt;</span>
+                <img class="quick-trade-icon" src="../assets/symbol/effect/credits.webp" alt="" aria-hidden="true">
+              </button>
+              <button class="quick-trade-button" type="button" data-quick-trade="publicity-for-card" aria-label="3宣传精选1张牌">
+                <span class="quick-trade-count">3</span>
+                <img class="quick-trade-icon" src="../assets/symbol/effect/publicity.webp" alt="" aria-hidden="true">
+                <span class="quick-trade-arrow" aria-hidden="true">-&gt;</span>
+                <img class="quick-trade-icon" src="../assets/symbol/effect/choose_card.webp" alt="" aria-hidden="true">
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="player-board-panel" id="player-board-panel" aria-label="玩家版图">
+          <div class="player-board-stage" id="player-board-stage">
+            <img class="player-board-image" src="../assets/core/player_board.png" alt="玩家版图" width="960" height="329" decoding="async">
+            <div class="player-board-tech-layer" id="player-board-tech-layer" aria-hidden="true"></div>
+            <div class="player-board-data-layer" id="player-board-data-layer" aria-hidden="true"></div>
+          </div>
+        </div>
+        <section class="table-panel player-hand-panel" id="player-hand-panel" aria-label="玩家手牌区"
+          data-settlement-minimizable="hand-selection"
+          data-settlement-minimize-mode="panel"
+          data-settlement-label="手牌选择"
+          data-settlement-active-classes="discard-selection-active play-card-selection-active hand-scan-selection-active move-payment-selection-active industry-hand-selection-active">
+          <div class="player-hand-panel-header" data-settlement-minimize-host>
+            <div class="panel-title player-hand-panel-title" id="player-hand-panel-title">
+              <span class="player-hand-panel-title-label">玩家手牌区</span>
+              <span class="player-hand-panel-title-count" id="player-hand-panel-hand-count" aria-label="当前手牌数"></span>
+              <span class="player-hand-panel-title-hint" id="player-hand-panel-title-hint"></span>
+            </div>
+            <button class="play-card-action-button" type="button" id="play-card-action-button" hidden>打出</button>
+            <button class="play-card-selection-cancel" type="button" id="play-card-selection-cancel" hidden>取消</button>
+            <button class="hand-card-play-action-button" type="button" id="hand-card-play-action-button" hidden>打出</button>
+            <button class="card-corner-action-button" type="button" id="card-corner-action-button" hidden>弃牌换资源</button>
+            <button class="move-payment-confirm" type="button" id="move-payment-confirm" hidden>确认移动</button>
+            <button class="hand-scan-cancel" type="button" id="hand-scan-cancel" hidden>取消扫描</button>
+            <button class="discard-selection-cancel" type="button" id="discard-selection-cancel" hidden>取消</button>
+            <button class="move-payment-cancel" type="button" id="move-payment-cancel" hidden>取消</button>
+          </div>
+          <div class="player-hand-fan" id="player-hand-fan"></div>
+        </section>
+        <section class="table-panel reserved-card-panel is-empty" id="reserved-card-panel" aria-label="保留牌区">
+          <div class="reserved-card-panel-header">
+            <div class="panel-title">保留牌区</div>
+          </div>
+          <div class="reserved-card-content">
+            <div class="initial-selection-area" id="initial-selection-area" hidden></div>
+            <div class="reserved-card-fan" id="reserved-card-fan"></div>
+          </div>
+        </section>
+      </section>
+
+      <div class="board-shell" id="board-shell">
+        <div class="wheel-wrap" id="wheel-wrap">
+          <div class="fly-wrap fly-wrap-1">
+            <div class="wheel wheel1" id="wheel-1"></div>
+          </div>
+          <div class="fly-wrap fly-wrap-2">
+            <div class="wheel wheel2" id="wheel-2"></div>
+          </div>
+          <div class="fly-wrap fly-wrap-3">
+            <div class="wheel wheel3" id="wheel-3"></div>
+          </div>
+          <div class="fly-wrap fly-wrap-4">
+            <div class="wheel wheel4" id="wheel-4"></div>
+          </div>
+
+          <div class="sector-wrap" id="sector-wrap-1"></div>
+          <div class="sector-wrap" id="sector-wrap-2"></div>
+          <div class="sector-wrap" id="sector-wrap-3"></div>
+          <div class="sector-wrap" id="sector-wrap-4"></div>
+
+          <div class="sun" aria-hidden="true"></div>
+          <div class="token-layer" id="token-layer" aria-label="已发射火箭"></div>
+          <div class="move-arrow-layer" id="move-arrow-layer" hidden aria-label="火箭移动方向"></div>
+        </div>
+      </div>
+
+      <div class="planets-reference" id="planets-reference" aria-label="星球位置参考贴图">
+        <img src="../assets/core/background/planets.png" alt="星球位置参考贴图" width="1672" height="941" decoding="async">
+        <div class="planets-token-layer" id="planets-token-layer" aria-label="手动放置在星球贴图上的标记"></div>
+      </div>
+
+    </main>
+
+    <aside class="table-column table-column-right" aria-label="右侧游戏区域">
+      <section class="table-panel tech-panel" id="tech-panel" aria-label="待拿取科技信息"
+        data-settlement-minimizable="tech-selection"
+        data-settlement-minimize-mode="panel"
+        data-settlement-label="科技选择"
+        data-settlement-active-classes="tech-selection-active">
+        <div class="tech-panel-header" data-settlement-minimize-host>
+          <div class="panel-title" id="tech-panel-title">待拿取科技信息</div>
+          <button class="tech-selection-cancel" type="button" id="tech-selection-cancel" hidden>取消</button>
+        </div>
+        <div class="tech-stage" id="tech-stage">
+          <div class="tech-row tech-row-blue">
+            <div class="tech-slot" data-tech-slot="blue1">
+              <div class="tech-slot-stack">
+                <div class="tech-tile-wrap" data-tech-wrap-for="blue1">
+                  <img class="tech-tile" data-tech-id="blue1" src="../assets/tech_tile/blue1.png" alt="蓝色科技 1" width="175" height="246" decoding="async">
+                  <img class="tech-first-take-overlay" data-tech-overlay-for="blue1" src="../assets/tech_tile/2vp.png" alt="" width="175" height="246" decoding="async" aria-hidden="true">
+                </div>
+                <img class="tech-bonus" data-tech-bonus-for="blue1" alt="" width="128" height="128" decoding="async" hidden>
+              </div>
+            </div>
+            <div class="tech-slot" data-tech-slot="blue2">
+              <div class="tech-slot-stack">
+                <div class="tech-tile-wrap" data-tech-wrap-for="blue2">
+                  <img class="tech-tile" data-tech-id="blue2" src="../assets/tech_tile/blue2.png" alt="蓝色科技 2" width="175" height="246" decoding="async">
+                  <img class="tech-first-take-overlay" data-tech-overlay-for="blue2" src="../assets/tech_tile/2vp.png" alt="" width="175" height="246" decoding="async" aria-hidden="true">
+                </div>
+                <img class="tech-bonus" data-tech-bonus-for="blue2" alt="" width="128" height="128" decoding="async" hidden>
+              </div>
+            </div>
+            <div class="tech-slot" data-tech-slot="blue3">
+              <div class="tech-slot-stack">
+                <div class="tech-tile-wrap" data-tech-wrap-for="blue3">
+                  <img class="tech-tile" data-tech-id="blue3" src="../assets/tech_tile/blue3.png" alt="蓝色科技 3" width="175" height="246" decoding="async">
+                  <img class="tech-first-take-overlay" data-tech-overlay-for="blue3" src="../assets/tech_tile/2vp.png" alt="" width="175" height="246" decoding="async" aria-hidden="true">
+                </div>
+                <img class="tech-bonus" data-tech-bonus-for="blue3" alt="" width="128" height="128" decoding="async" hidden>
+              </div>
+            </div>
+            <div class="tech-slot" data-tech-slot="blue4">
+              <div class="tech-slot-stack">
+                <div class="tech-tile-wrap" data-tech-wrap-for="blue4">
+                  <img class="tech-tile" data-tech-id="blue4" src="../assets/tech_tile/blue4.png" alt="蓝色科技 4" width="175" height="246" decoding="async">
+                  <img class="tech-first-take-overlay" data-tech-overlay-for="blue4" src="../assets/tech_tile/2vp.png" alt="" width="175" height="246" decoding="async" aria-hidden="true">
+                </div>
+                <img class="tech-bonus" data-tech-bonus-for="blue4" alt="" width="128" height="128" decoding="async" hidden>
+              </div>
+            </div>
+          </div>
+          <div class="tech-row tech-row-orange">
+            <div class="tech-slot" data-tech-slot="orange1">
+              <div class="tech-slot-stack">
+                <div class="tech-tile-wrap" data-tech-wrap-for="orange1">
+                  <img class="tech-tile" data-tech-id="orange1" src="../assets/tech_tile/orange1.png" alt="橙色科技 1" width="175" height="246" decoding="async">
+                  <img class="tech-first-take-overlay" data-tech-overlay-for="orange1" src="../assets/tech_tile/2vp.png" alt="" width="175" height="246" decoding="async" aria-hidden="true">
+                </div>
+                <img class="tech-bonus" data-tech-bonus-for="orange1" alt="" width="128" height="128" decoding="async" hidden>
+              </div>
+            </div>
+            <div class="tech-slot" data-tech-slot="orange2">
+              <div class="tech-slot-stack">
+                <div class="tech-tile-wrap" data-tech-wrap-for="orange2">
+                  <img class="tech-tile" data-tech-id="orange2" src="../assets/tech_tile/orange2.png" alt="橙色科技 2" width="175" height="246" decoding="async">
+                  <img class="tech-first-take-overlay" data-tech-overlay-for="orange2" src="../assets/tech_tile/2vp.png" alt="" width="175" height="246" decoding="async" aria-hidden="true">
+                </div>
+                <img class="tech-bonus" data-tech-bonus-for="orange2" alt="" width="128" height="128" decoding="async" hidden>
+              </div>
+            </div>
+            <div class="tech-slot" data-tech-slot="orange3">
+              <div class="tech-slot-stack">
+                <div class="tech-tile-wrap" data-tech-wrap-for="orange3">
+                  <img class="tech-tile" data-tech-id="orange3" src="../assets/tech_tile/orange3.png" alt="橙色科技 3" width="175" height="246" decoding="async">
+                  <img class="tech-first-take-overlay" data-tech-overlay-for="orange3" src="../assets/tech_tile/2vp.png" alt="" width="175" height="246" decoding="async" aria-hidden="true">
+                </div>
+                <img class="tech-bonus" data-tech-bonus-for="orange3" alt="" width="128" height="128" decoding="async" hidden>
+              </div>
+            </div>
+            <div class="tech-slot" data-tech-slot="orange4">
+              <div class="tech-slot-stack">
+                <div class="tech-tile-wrap" data-tech-wrap-for="orange4">
+                  <img class="tech-tile" data-tech-id="orange4" src="../assets/tech_tile/orange4.png" alt="橙色科技 4" width="175" height="246" decoding="async">
+                  <img class="tech-first-take-overlay" data-tech-overlay-for="orange4" src="../assets/tech_tile/2vp.png" alt="" width="175" height="246" decoding="async" aria-hidden="true">
+                </div>
+                <img class="tech-bonus" data-tech-bonus-for="orange4" alt="" width="128" height="128" decoding="async" hidden>
+              </div>
+            </div>
+          </div>
+          <div class="tech-row tech-row-purple">
+            <div class="tech-slot" data-tech-slot="purple1">
+              <div class="tech-slot-stack">
+                <div class="tech-tile-wrap" data-tech-wrap-for="purple1">
+                  <img class="tech-tile" data-tech-id="purple1" src="../assets/tech_tile/purple1.png" alt="紫色科技 1" width="175" height="246" decoding="async">
+                  <img class="tech-first-take-overlay" data-tech-overlay-for="purple1" src="../assets/tech_tile/2vp.png" alt="" width="175" height="246" decoding="async" aria-hidden="true">
+                </div>
+                <img class="tech-bonus" data-tech-bonus-for="purple1" alt="" width="128" height="128" decoding="async" hidden>
+              </div>
+            </div>
+            <div class="tech-slot" data-tech-slot="purple2">
+              <div class="tech-slot-stack">
+                <div class="tech-tile-wrap" data-tech-wrap-for="purple2">
+                  <img class="tech-tile" data-tech-id="purple2" src="../assets/tech_tile/purple2.png" alt="紫色科技 2" width="175" height="246" decoding="async">
+                  <img class="tech-first-take-overlay" data-tech-overlay-for="purple2" src="../assets/tech_tile/2vp.png" alt="" width="175" height="246" decoding="async" aria-hidden="true">
+                </div>
+                <img class="tech-bonus" data-tech-bonus-for="purple2" alt="" width="128" height="128" decoding="async" hidden>
+              </div>
+            </div>
+            <div class="tech-slot" data-tech-slot="purple3">
+              <div class="tech-slot-stack">
+                <div class="tech-tile-wrap" data-tech-wrap-for="purple3">
+                  <img class="tech-tile" data-tech-id="purple3" src="../assets/tech_tile/purple3.png" alt="紫色科技 3" width="175" height="246" decoding="async">
+                  <img class="tech-first-take-overlay" data-tech-overlay-for="purple3" src="../assets/tech_tile/2vp.png" alt="" width="175" height="246" decoding="async" aria-hidden="true">
+                </div>
+                <img class="tech-bonus" data-tech-bonus-for="purple3" alt="" width="128" height="128" decoding="async" hidden>
+              </div>
+            </div>
+            <div class="tech-slot" data-tech-slot="purple4">
+              <div class="tech-slot-stack">
+                <div class="tech-tile-wrap" data-tech-wrap-for="purple4">
+                  <img class="tech-tile" data-tech-id="purple4" src="../assets/tech_tile/purple4.png" alt="紫色科技 4" width="175" height="246" decoding="async">
+                  <img class="tech-first-take-overlay" data-tech-overlay-for="purple4" src="../assets/tech_tile/2vp.png" alt="" width="175" height="246" decoding="async" aria-hidden="true">
+                </div>
+                <img class="tech-bonus" data-tech-bonus-for="purple4" alt="" width="128" height="128" decoding="async" hidden>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="table-panel public-card-panel" id="public-card-panel" aria-label="公共牌区"
+        data-settlement-minimizable="public-card-selection"
+        data-settlement-minimize-mode="panel"
+        data-settlement-label="公共牌选择"
+        data-settlement-active-classes="card-selection-active">
+        <div class="public-card-panel-header" data-settlement-minimize-host>
+          <div class="panel-title">公共牌区</div>
+          <button class="public-blind-draw-button" type="button" id="public-blind-draw-button" disabled>盲抽</button>
+          <button class="public-scan-confirm" type="button" id="public-scan-confirm" hidden>确认扫描</button>
+          <button class="card-selection-cancel" type="button" id="card-selection-cancel" hidden>取消</button>
+        </div>
+        <div class="public-card-row" id="public-card-row"></div>
+      </section>
+
+      <section class="table-panel opponents-panel" aria-label="玩家信息统计">
+        <div class="panel-title">玩家信息统计</div>
+        <div class="opponent-stat-grid" id="opponent-stat-grid"></div>
+      </section>
+    </aside>
+
+    <aside class="failsafe-dock" id="failsafe-dock" aria-label="兜底控制">
+      <button class="failsafe-button failsafe-ai-button" type="button" id="failsafe-ai-button" title="把当前电脑玩家交还给 AI 自动操作">AI接管</button>
+      <button class="failsafe-button failsafe-skip-button" type="button" id="failsafe-skip-button" title="清理当前待处理流程并跳过当前回合">强制跳过</button>
+      <button class="failsafe-button failsafe-restart-button" type="button" id="failsafe-restart-button" title="清空当前进度并按本局随机种子重新开始">重新开始</button>
+    </aside>
+
+    <aside class="debug-dock" id="debug-dock">
+      <button class="debug-toggle" type="button" id="debug-toggle" aria-controls="debug-panel" aria-expanded="false">调试</button>
+      <div class="debug-panel" id="debug-panel">
+        <div class="debug-actions">
+          <button class="debug-action-button debug-player-switch-button" type="button" id="debug-player-switch-button" aria-controls="debug-player-menu" aria-expanded="false">玩家：白色</button>
+          <div class="debug-player-menu" id="debug-player-menu" hidden></div>
+          <button class="debug-action-button" type="button" id="debug-score-button">+20分</button>
+          <button class="debug-action-button" type="button" id="debug-rotate-button">旋转</button>
+          <button class="debug-action-button" type="button" id="debug-income-button">收入</button>
+          <button class="debug-action-button" type="button" id="debug-gain-card-button">获取卡牌</button>
+          <button class="debug-action-button" type="button" id="debug-sector-win-button" aria-pressed="false">赢得扇区调试</button>
+          <button class="debug-action-button" type="button" id="debug-alien-trace-button">获取外星人标记</button>
+          <button class="debug-action-button" type="button" id="debug-jiuzhe-button">九折调试</button>
+          <button class="debug-action-button" type="button" id="debug-yichangdian-button">异常点调试</button>
+          <button class="debug-action-button" type="button" id="debug-fangzhou-button">方舟调试</button>
+          <button class="debug-action-button" type="button" id="debug-banrenma-button">半人马调试</button>
+          <button class="debug-action-button" type="button" id="debug-chong-button">虫族调试</button>
+          <button class="debug-action-button" type="button" id="debug-amiba-button">阿米巴调试</button>
+          <button class="debug-action-button" type="button" id="debug-aomomo-button">奥陌陌调试</button>
+          <button class="debug-action-button" type="button" id="debug-runezu-button">符文族调试</button>
+          <button class="debug-action-button" type="button" id="debug-cheat-button" aria-pressed="false">作弊</button>
+        </div>
+      </div>
+    </aside>
+
+    <aside class="report-dock" id="report-dock">
+      <div class="report-dock-controls">
+        <button class="report-control-button final-result-button" type="button" id="final-result-button" aria-label="查看当前统计" aria-controls="final-result-overlay" aria-expanded="false">统计</button>
+        <button class="report-control-button log-toggle" type="button" id="log-toggle" aria-controls="report-panel" aria-expanded="false">日志</button>
+      </div>
+      <div class="report-panel" id="report-panel">
+        <div class="report-tabs" role="tablist" aria-label="日志类型">
+          <button class="report-tab is-active" type="button" id="state-log-tab" data-report-tab="state" role="tab" aria-selected="true" aria-controls="state-readout">状态日志</button>
+          <button class="report-tab" type="button" id="action-log-tab" data-report-tab="action" role="tab" aria-selected="false" aria-controls="action-log-readout">行动日志</button>
+        </div>
+        <output class="state-readout" id="state-readout" role="tabpanel" aria-labelledby="state-log-tab" aria-live="polite"></output>
+        <div class="action-log-readout" id="action-log-readout" role="tabpanel" aria-labelledby="action-log-tab" hidden></div>
+      </div>
+    </aside>
+
+    <div class="final-result-overlay" id="final-result-overlay" hidden aria-hidden="true">
+      <div class="final-result-dialog" role="dialog" aria-modal="true" aria-labelledby="final-result-title">
+        <div class="final-result-header">
+          <div>
+            <h2 class="final-result-title" id="final-result-title">终局结果</h2>
+            <p class="final-result-subtitle" id="final-result-subtitle">最终分数统计</p>
+          </div>
+          <div class="final-result-actions">
+            <button class="final-result-action-button final-result-download-log" type="button" id="final-result-download-log">下载行动日志</button>
+            <button class="final-result-action-button final-result-minimize" type="button" id="final-result-minimize" aria-label="缩小终局结果">缩小</button>
+          </div>
+        </div>
+        <div class="final-result-table-wrap">
+          <table class="final-result-table" id="final-result-table">
+            <thead id="final-result-head"></thead>
+            <tbody id="final-result-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./game/random.js?v=same-seed-restart-1"></script>
+  <script src="./solar-system/layout.js?v=player-actions-4"></script>
+  <script src="./solar-system/core.js?v=player-actions-4"></script>
+  <script src="./game/card-catalog.js?v=card-catalog-sync-1"></script>
+  <script src="./game/cards/deck.js?v=card-deck-unique-1"></script>
+  <script src="./game/cards/effects.js?v=dlc27-chong-fossil-1-b25-scan-pool-1"></script>
+  <script src="./game/cards/task-state.js?v=card-task-state-1"></script>
+  <script src="./game/basic-cards.js?v=card-deck-1"></script>
+  <script src="./game/players.js?v=player-count-neutral-trace-1"></script>
+  <script src="./game/final-scoring.js?v=turn-end-final-mark-1"></script>
+  <script src="./game/end-game-scoring.js?v=final-income-trace-1"></script>
+  <script src="./game/rockets.js?v=planet-tokens-11"></script>
+  <script src="./game/planet-reference-layout.js?v=planet-tokens-11"></script>
+  <script src="./game/planet-stats.js?v=b29-b7-chong-1"></script>
+  <script src="./game/actions/shared.js?v=aomomo-orbit-land-1"></script>
+  <script src="./game/actions/launch.js?v=planet-tokens-11"></script>
+  <script src="./game/actions/orbit.js?v=aomomo-orbit-land-2"></script>
+  <script src="./game/actions/land.js?v=aomomo-orbit-land-2"></script>
+  <script src="./game/tech/catalog.js?v=tech-module-1"></script>
+  <script src="./game/tech/board-state.js?v=industry-pirates-1"></script>
+  <script src="./game/tech/player-tech.js?v=tech-module-1"></script>
+  <script src="./game/tech/placement.js?v=tech-module-1"></script>
+  <script src="./game/tech/bonuses.js?v=tech-module-1"></script>
+  <script src="./game/tech/resolver.js?v=research-tech-take-1"></script>
+  <script src="./game/tech/render.js?v=tech-module-2"></script>
+  <script src="./game/tech/index.js?v=tech-module-2"></script>
+  <script src="./game/data/placement.js?v=data-module-4"></script>
+  <script src="./game/data/nebula-placement.js?v=data-module-2"></script>
+  <script src="./game/data/state.js?v=data-module-5"></script>
+  <script src="./game/data/nebula-state.js?v=data-module-3"></script>
+  <script src="./game/data/render.js?v=data-module-4"></script>
+  <script src="./game/data/nebula-render.js?v=data-module-3"></script>
+  <script src="./game/data/index.js?v=data-module-4"></script>
+  <script src="./game/actions/research-tech.js?v=tech-module-1"></script>
+  <script src="./game/actions/planet-rewards.js?v=aomomo-rewards-1"></script>
+  <script src="./game/actions/index.js?v=tech-module-1"></script>
+  <script src="./game/actions/quick-trades.js?v=quick-trade-pick-1"></script>
+  <script src="./game/actions/scan-effects.js?v=scan-effects-3"></script>
+  <script src="./game/history/action-history.js?v=action-history-7"></script>
+  <script src="./game/history/commands.js?v=action-history-2"></script>
+  <script src="./game/history/transactions.js?v=action-history-3"></script>
+  <script src="./game/abilities/rocket.js?v=abilities-2"></script>
+  <script src="./game/abilities/scan.js?v=abilities-2"></script>
+  <script src="./game/abilities/planet.js?v=b29-first-position-1"></script>
+  <script src="./game/abilities/data.js?v=abilities-5"></script>
+  <script src="./game/abilities/tech.js?v=research-tech-take-1"></script>
+  <script src="./game/abilities/chain.js?v=undo-flow-stack-1-b25-scan-pool-1"></script>
+  <script src="./game/abilities/index.js?v=research-tech-take-1"></script>
+  <script src="./game/aliens/placement.js?v=aomomo-landing-order-1"></script>
+  <script src="./game/aliens/catalog.js?v=aliens-2"></script>
+  <script src="./game/aliens/state.js?v=player-count-neutral-trace-1"></script>
+  <script src="./game/aliens/jiuzhe.js?v=jiuzhe-progress-threat-1"></script>
+  <script src="./game/aliens/yichangdian.js?v=alien-trace-legality-1"></script>
+  <script src="./game/aliens/fangzhou.js?v=aliens-fangzhou-state-auto-unlock-1"></script>
+  <script src="./game/aliens/banrenma.js?v=banrenma-trace-legality-1"></script>
+  <script src="./game/aliens/chong.js?v=chong-fossil-count-1"></script>
+  <script src="./game/aliens/amiba.js?v=amiba-trace-1"></script>
+  <script src="./game/aliens/aomomo.js?v=aomomo0-scan-1"></script>
+  <script src="./game/aliens/runezu.js?v=runezu-branch-reward-labels-1"></script>
+  <script src="./game/aliens/fangzhou-card1-queue.js?v=aliens-fangzhou-1"></script>
+  <script src="./game/aliens/reveal-card-grants.js?v=alien-reveal-card-grants-1"></script>
+  <script src="./game/aliens/randomizer.js?v=alien-pool-1"></script>
+  <script src="./game/aliens/render.js?v=aliens-render-3"></script>
+  <script src="./game/aliens/index.js?v=alien-trace-legality-1"></script>
+  <script src="./game/initial-cards.js?v=company-balance-1"></script>
+  <script src="./game/industry/placement.js?v=grand-strategy-1"></script>
+  <script src="./game/industry/state.js?v=future-span-advance-1"></script>
+  <script src="./game/industry/catalog.js?v=grand-strategy-1"></script>
+  <script src="./game/industry/passives.js?v=ai-opening-round-1"></script>
+  <script src="./game/industry/abilities.js?v=future-span-advance-1"></script>
+  <script src="./game/industry/strategy-passive.js?v=industry-strategy-passive-3"></script>
+  <script src="./game/industry/helios-passive.js?v=industry-helios-passive-1"></script>
+  <script src="./game/industry/render.js?v=grand-strategy-1"></script>
+  <script src="./game/industry/index.js?v=industry-pirates-1"></script>
+  <script src="./game/ai/valuation.js?v=jiuzhe-threat-marginal-1"></script>
+  <script src="./game/ai/goals.js?v=ai-v2-2"></script>
+  <script src="./game/ai/race-model.js?v=ai-race-model-1"></script>
+  <script src="./game/ai/action-graph.js?v=ai-v2-3"></script>
+  <script src="./game/ai/planner.js?v=ai-v2-1"></script>
+  <script src="./game/ai/evaluator.js?v=ai-auto-battle-1"></script>
+  <script src="./game/ai/policy.js?v=ai-move-card-opportunity-1"></script>
+  <script src="./game/ai/battle-analytics.js?v=task-availability-time-1-trade-identity-1-task-target-cashout-1"></script>
+  <script src="./game/ai/index.js?v=ai-race-model-1"></script>
+  <script src="./app/alien-trace-reward-flow.js?v=trace-no-target-1"></script>
+  <script src="./app/dependencies.js?v=daily-game-1"></script>
+  <script src="./app/constants.js?v=industry-pirates-1"></script>
+  <script src="./app/dom.js?v=same-seed-restart-1"></script>
+  <script src="./app/settlement-minimize.js?v=settlement-minimize-1"></script>
+  <script src="./app/events.js?v=same-seed-restart-1"></script>
+  <script src="./app/action-log-export.js?v=action-log-export-2"></script>
+  <script src="./app/public-api.js?v=app-boundaries-5"></script>
+  <script src="./app/ai-controller.js?v=grand-projected-analyze-1-fangzhou-early-unlock-1-grand-fangzhou-land-unlock-1-cheat-runezu-mars-land-1-same-color-sector-task-1-grand-terminal-dead-play-scan-1-chong-cashout-preview-1-income-preview-all-1-grand-fangzhou-credit-income-1-chong-pre-main-analyze-1-aomomo6-exchange-1-chong-probe-reward-1-grand-fangzhou-overflow-1-huanyu-r3-post-pass-no-cashout-1-grand-r1-ready-analyze-1-grand-chong-two-step-1-huanyu-fangzhou-credit-lock-1-final-analyze-before-recoverable-scan-1-early-lightsail-empty-backtrack-1-human-company-random-1-grand-data-poor-fangzhou-blue-resource-1-cross-owner-ready-task-1-explicit-trade-preserve-1-grand-low-tail-dead-hand-pick-1-grand-r3-dead-hand-scan-1-huanyu-runezu-repeat-energy-1-huanyu-final-blue1-analyze-refuel-1-grand-final-fangzhou-comet-1-grand-final-dlc42-sector-coverage-1-huanyu-final-purple4-cashout-1-grand-c2-type3-repeat-stop-2-cheat-299-single-blind-refill-1-huanyu-aomomo-r2-first-land-1-huanyu-r2-blue4-publicity-bridge-1-huanyu-r1-scan-before-paid-move-1-closed-planet-task-1-grand-final-blue1-credit-bridge-1-grand-r3-aomomo-anomaly-scan-setup-1-grand-r2-first-blue1-credit-bridge-1-b25-scan-pool-1-cheat-double-blind-analyze-1-cheat-single-blind-land-1-huanyu-r1-blue1-credit-engine-1-tech-selection-direct-score-1"></script>
+  <script src="./app.js?v=same-seed-restart-2-undo-flow-stack-2-industry-flow-start-undo-1-card-turn-regression-1-ai-url-log-summary-3-runezu-branch-reward-labels-1-turn-end-final-mark-1-sector-flow-owner-1-action-briefing-round-scope-1-ai-opening-round-1-chong-pickup-undo-1-card-task-flow-owner-1-b25-scan-pool-1"></script>
+</body>
+</html>

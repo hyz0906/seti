@@ -1,0 +1,11 @@
+﻿card_id,card_name,price,card_type_code,set,discard_action_code,scan_action_code,income_code
+0.webp,0,1,3,alien:符文族,s_1,3,2
+1.webp,1,1,0,alien:符文族,s_1,2,1
+2.webp,2,0,1,alien:符文族,s_7,0,0
+3.webp,3,0,1,alien:符文族,s_5,1,2
+4.webp,4,1,1,alien:符文族,s_5,0,1
+5.webp,5,1,1,alien:符文族,s_3,1,2
+6.webp,6,1,1,alien:符文族,s_2,1,0
+7.webp,7,1,0,alien:符文族,s_4,2,1
+8.webp,8,1,3,alien:符文族,s_7,0,0
+9.webp,9,2,2,alien:符文族,s_6,2,2
