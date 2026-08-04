@@ -112,6 +112,7 @@
       finishIndustryAbilityFlow,
       formatRocketLabel,
       getActivePlayers,
+      getActionLogEntries,
       getAlienTraceActionPlayer,
       getCardPlayCost,
       getCardPrice,
@@ -232,6 +233,7 @@
       playerIds: [],
       aiDifficulty: AI_DIFFICULTY_LAUGHABLE,
       logs: [],
+      turnActionHistory: [],
       bugs: [],
       bugCounts: {},
       turnMoveCounts: {},
@@ -244,6 +246,7 @@
       strategyTuningHistory: [],
       strategyTuningHistoryLoaded: false,
       nextStrategyTuningHistoryId: 1,
+      resourceFlowInitialPlayerStates: null,
     };
     let aiAutoStepScheduled = false;
     let aiAutoStepInProgress = false;
@@ -517,7 +520,77 @@
             : [],
         };
       }
+      if (type === "discard" && isAiIncomeDiscardType(details.pendingType)) {
+        const preview = details.incomeDiscardPreview || null;
+        const summarizeIncomeGain = (gain) => gain && typeof gain === "object"
+          ? {
+            credits: aiNumber(gain.credits),
+            energy: aiNumber(gain.energy),
+            handSize: aiNumber(gain.handSize),
+            publicity: aiNumber(gain.publicity),
+          }
+          : null;
+        return {
+          pendingType: details.pendingType || null,
+          selectedIndexes: Array.isArray(details.selectedIndexes)
+            ? details.selectedIndexes.slice(0, 8)
+            : [],
+          selectedCards: Array.isArray(details.selectedCards)
+            ? details.selectedCards.slice(0, 8).map((card) => ({
+              handIndex: card?.handIndex ?? null,
+              cardId: card?.cardId || null,
+              cardInstanceId: card?.cardInstanceId || null,
+              cardLabel: card?.cardLabel || null,
+            }))
+            : [],
+          incomeGainByIndex: Array.isArray(details.incomeGainByIndex)
+            ? details.incomeGainByIndex.slice(0, 10).map(summarizeIncomeGain)
+            : [],
+          incomeDiscardPreview: preview ? {
+            pendingType: preview.pendingType || details.pendingType || null,
+            count: preview.count ?? null,
+            handSize: preview.handSize ?? null,
+            resources: preview.resources ? { ...preview.resources } : null,
+            options: Array.isArray(preview.options)
+              ? preview.options.slice(0, 10).map((option) => ({
+                index: option?.index ?? null,
+                selected: option?.selected === true,
+                cardId: option?.cardId || null,
+                cardLabel: option?.cardLabel || null,
+                incomeGain: summarizeIncomeGain(option?.incomeGain),
+                incomeScore: option?.incomeScore ?? null,
+                finalFormulaFit: option?.finalFormulaFit ?? null,
+                routeEnergyFit: option?.routeEnergyFit ?? null,
+                grandFangzhouCreditThroughputFit: option?.grandFangzhouCreditThroughputFit ?? null,
+                playValue: option?.playValue ?? null,
+                playableNow: option?.playableNow === true,
+                playScoreNow: option?.playScoreNow ?? null,
+                playDirectScoreNow: option?.playDirectScoreNow ?? null,
+                discardOpportunityCost: option?.discardOpportunityCost ?? null,
+                handScarcityCost: option?.handScarcityCost ?? null,
+                netAfterDiscard: option?.netAfterDiscard ?? null,
+              }))
+              : [],
+          } : null,
+          tradeId: details.tradeId || null,
+        };
+      }
       return compactAiAutoBattleLogValue(details || {});
+    }
+
+    function captureAiResourceFlowInitialPlayerStates() {
+      return Object.fromEntries(getActivePlayers().map((player) => [player.id, {
+        id: player.id,
+        color: player.color || null,
+        playerLabel: player.colorLabel || player.name || player.color || player.id,
+        resources: { ...(player.resources || {}) },
+        income: { ...(player.income || {}) },
+        hand: (player.hand || []).map((card) => ({
+          id: card?.id || card?.cardInstanceId || card?.cardId || null,
+          label: card?.label || card?.cardName || card?.name || null,
+        })),
+        initialSelection: player.initialSelection || null,
+      }]));
     }
 
     function summarizeAiAutoBattleLogCard(card = {}) {
@@ -566,6 +639,21 @@
     function recordAiAutoBattleLog(type, message, details = {}) {
       const entry = createAiAutoBattleEntry(type, message, details);
       aiAutoBattleState.logs.push(entry);
+      if (type === "turn-action") {
+        const action = details?.action || {};
+        aiAutoBattleState.turnActionHistory.push({
+          type,
+          roundNumber: entry.roundNumber,
+          rawTurnNumber: entry.rawTurnNumber,
+          playerId: entry.playerId,
+          action: {
+            id: action.id || null,
+            tradeId: action.tradeId || null,
+            actionKind: action.actionKind || null,
+            score: aiNumber(action.score),
+          },
+        });
+      }
       return entry;
     }
 
@@ -1115,6 +1203,16 @@
         report.lowMarkPlayerDiagnostics = lowMarkPlayerDiagnosticsList[0] || null;
         report.lowMarkPlayerDiagnosticsList = lowMarkPlayerDiagnosticsList;
       }
+      if (ai?.resourceFlow?.analyzeStructuredActionLog && typeof getActionLogEntries === "function") {
+        report.resourceFlow = ai.resourceFlow.analyzeStructuredActionLog(
+          getActionLogEntries({ includeRecovery: true, readOnlyInternal: true }),
+          {
+            gameId: report.lastSummary?.seed || "ai-game",
+            initialPlayerStates: aiAutoBattleState.resourceFlowInitialPlayerStates,
+            playerResults: report.playerResults,
+          },
+        );
+      }
       return report;
     }
 
@@ -1507,6 +1605,7 @@
       );
       if (options.clearLogs !== false) {
         aiAutoBattleState.logs = [];
+        aiAutoBattleState.turnActionHistory = [];
         aiAutoBattleState.bugs = [];
         aiAutoBattleState.bugCounts = {};
         aiAutoBattleState.lastSummary = null;
@@ -1535,6 +1634,7 @@
       state.effectStepActive = false;
       if (typeof resetScanRunSequence === "function") resetScanRunSequence();
       resetActionLog();
+      aiAutoBattleState.resourceFlowInitialPlayerStates = captureAiResourceFlowInitialPlayerStates();
       initializeCardGame(DEFAULT_INITIAL_HAND_COUNT);
       randomizeAll();
       startInitialSelection();
@@ -1905,6 +2005,7 @@
             pendingType,
             incomeFormulaEntries,
           );
+          const playCandidate = buildAiPlayCardCandidate(card, index, player);
           const playValue = Math.max(0, scoreAiPlayCardValue(card, { player }));
           const discardOpportunityCost = scoreAiIncomeDiscardSelectionOpportunityCost(player, card, { playValue });
           const value = incomeScore + finalFormulaFit + routeEnergyFit + grandFangzhouCreditThroughputFit;
@@ -1919,6 +2020,9 @@
             routeEnergyFit: roundAiScore(routeEnergyFit),
             grandFangzhouCreditThroughputFit: roundAiScore(grandFangzhouCreditThroughputFit),
             playValue: roundAiScore(playValue),
+            playableNow: Boolean(playCandidate),
+            playScoreNow: playCandidate ? roundAiScore(aiNumber(playCandidate.score)) : null,
+            playDirectScoreNow: playCandidate ? roundAiScore(aiNumber(playCandidate.directScoreGain)) : null,
             discardOpportunityCost: roundAiScore(discardOpportunityCost),
             handScarcityCost: roundAiScore(handScarcityCost),
             netAfterDiscard: roundAiScore(value - discardOpportunityCost - handScarcityCost),
@@ -2651,6 +2755,43 @@
           + incomeValue * 0.12
           + (typeCode === 3 ? 1 : 0)
           - unreachablePenalty;
+      }
+      const lateGrandStrategyConversionPick = pendingType === "industry_strategy_pick"
+        && getAiRoundNumber() >= 3;
+      if (lateGrandStrategyConversionPick) {
+        const playCandidate = buildAiPlayCardCandidate(card, -1, player);
+        const immediatePlayValue = Math.max(0, aiNumber(playCandidate?.score));
+        const directScoreGain = Math.max(0, aiNumber(playCandidate?.directScoreGain));
+        const price = Math.max(0, aiNumber(getCardPrice(card)));
+        const credits = Math.max(0, aiNumber(player?.resources?.credits));
+        const creditShortfall = Math.max(0, price - credits);
+        const hasPersistentValue = Boolean(
+          model?.tasks?.length
+          || model?.triggers?.length
+          || model?.endGameScoring
+          || model?.pluto
+          || typeCode === 3
+          || isAiAlienMainPlayCard(card)
+        );
+        const finalRound = getAiRoundNumber() >= FINAL_ROUND_NUMBER;
+        const deferredValue = playCandidate
+          ? playableValue * 0.12
+          : playableValue * (finalRound ? 0.12 : 0.28);
+        const affordabilityPenalty = playCandidate
+          ? 0
+          : Math.min(
+            finalRound ? 24 : 16,
+            (finalRound ? 8 : 4)
+              + creditShortfall * 4
+              + (hasPersistentValue ? 0 : 4),
+          );
+        return immediatePlayValue * 0.85
+          + directScoreGain * 0.45
+          + deferredValue
+          + cornerValue * 0.18
+          + incomeValue * 0.12
+          + (typeCode === 3 ? 1.2 : 0)
+          - affordabilityPenalty;
       }
       if (finalRoundTradePick) {
         const playCandidate = buildAiPlayCardCandidate(card, -1, player);
@@ -6964,13 +7105,13 @@
 
     function countAiQuickTradesThisTurn(playerId = getCurrentPlayer()?.id, tradeId = null) {
       if (!playerId) return 0;
-      return (aiAutoBattleState.logs || []).filter((entry) => (
+      return (aiAutoBattleState.turnActionHistory || []).filter((entry) => (
         entry?.type === "turn-action"
         && entry.roundNumber === turnState.roundNumber
         && entry.rawTurnNumber === turnState.turnNumber
         && entry.playerId === playerId
-        && entry.details?.action?.id === "quickTrade"
-        && (!tradeId || entry.details.action.tradeId === tradeId)
+        && entry.action?.id === "quickTrade"
+        && (!tradeId || entry.action.tradeId === tradeId)
       )).length;
     }
 
@@ -7476,6 +7617,7 @@
       const directScoreScanUnlock = (allowExtendedResourceLock || weakNoDiscardDirectScanUnlock)
         && scanDirectScoreGain > 0
         && scanScore >= (getAiRoundNumber() >= FINAL_ROUND_NUMBER ? 20 : 22);
+      const placedComputerCount = Math.max(0, (data.listComputerPlacedTokens?.(player) || []).length);
       const grandStrategyRoundThreeDeadHandScanUnlock = allowExtendedResourceLock
         && tradeId === "cards-for-credit"
         && (
@@ -7519,14 +7661,43 @@
         && player.techState?.ownedTiles?.blue3
         && Number(player.techState?.blueBoardSlots?.blue3) === 1
         && Number(player.techState?.blueBoardSlots?.blue1) === 2
-        && Math.max(0, (data.listComputerPlacedTokens?.(player) || []).length) === 2
+        && placedComputerCount === 2
         && countAiStandardScansThisRound(player) === 0
         && hasAiRevealedAlienSpecies(aomomo?.ALIEN_ID || "奥陌陌")
         && hasAiRevealedAlienSpecies(yichangdian?.ALIEN_ID || "异常点")
         && scanCheck.ok
         && scanDirectScoreGain <= 0
         && scanScore >= 30;
-      const projectedAlienScanDataCount = grandStrategyRoundThreeAlienScanSetupBase
+      const grandStrategyRoundThreeAmibaAnalyzeCycleBase = allowExtendedResourceLock
+        && tradeId === "energy-for-credit"
+        && (
+          industryCard?.id === AI_GRAND_STRATEGY_INDUSTRY_ID
+          || industryCard?.label === AI_GRAND_STRATEGY_INDUSTRY_LABEL
+        )
+        && normalizeAiDifficulty(player.aiDifficulty || aiAutoBattleState.aiDifficulty)
+          === AI_DIFFICULTY_LAUGHABLE
+        && getAiRoundNumber() === 3
+        && countAiFinalMarksForPlayer(player) >= 3
+        && !getAiNextMissingFinalScoreThreshold(player)
+        && currentScore >= 70
+        && currentScore < 80
+        && aiNumber(resources.credits) === 0
+        && aiNumber(resources.energy) === 5
+        && aiNumber(resources.publicity) <= 2
+        && aiNumber(resources.availableData) === 0
+        && handSize === 3
+        && handAfterTrade === 3
+        && player.techState?.ownedTiles?.blue3
+        && placedComputerCount === 4
+        && hasAiRevealedAlienSpecies(amiba?.ALIEN_ID || "阿米巴")
+        && hasAiRevealedAlienSpecies(yichangdian?.ALIEN_ID || "异常点")
+        && scanCheck.ok
+        && scanDirectScoreGain <= 0
+        && scanScore >= 22;
+      const projectedAlienScanDataCount = (
+        grandStrategyRoundThreeAlienScanSetupBase
+        || grandStrategyRoundThreeAmibaAnalyzeCycleBase
+      )
         ? (scanEffects.buildScanEffectQueue?.(simulatedPlayer, {
           fullScanAction: true,
           turnState,
@@ -7542,6 +7713,14 @@
         : 0;
       const grandStrategyRoundThreeAlienScanSetupUnlock =
         grandStrategyRoundThreeAlienScanSetupBase && projectedAlienScanDataCount >= 2;
+      const grandStrategyRoundThreeAmibaAnalyzeCycleUnlock = Boolean(
+        grandStrategyRoundThreeAmibaAnalyzeCycleBase
+        && projectedAlienScanDataCount >= 2
+        && placedComputerCount + projectedAlienScanDataCount >= (data.ANALYZE_REQUIRED_COMPUTER_SLOT || 6)
+        && aiNumber(simulatedPlayer.resources?.energy)
+          - aiNumber((scanEffects?.getStandardScanCost?.(simulatedPlayer) || scanEffects?.SCAN_COST || {}).energy)
+          >= getAiAnalyzeEnergyCost(simulatedPlayer)
+      );
       const grandFinalDeadPlayScanUnlock = grandFinalDeadPlayScanWindow
         && tradeId === "cards-for-energy"
         && handAfterTrade >= 3
@@ -7670,6 +7849,7 @@
             || directScoreScanUnlock
             || grandStrategyRoundThreeDeadHandScanUnlock
             || grandStrategyRoundThreeAlienScanSetupUnlock
+            || grandStrategyRoundThreeAmibaAnalyzeCycleUnlock
             || grandFinalDeadPlayScanUnlock
           )
           ? {
@@ -7829,6 +8009,7 @@
         && !weakStartAlienPlayUnlockSafe
         && !huanyuAomomoRoundTwoFirstLandUnlock
         && !grandStrategyRoundThreeAlienScanSetupUnlock
+        && !grandStrategyRoundThreeAmibaAnalyzeCycleUnlock
         && (
           getAiRoundNumber() !== 2
           || nextThreshold
@@ -7925,6 +8106,7 @@
           directScoreScanUnlock,
           grandStrategyRoundThreeDeadHandScanUnlock,
           grandStrategyRoundThreeAlienScanSetupUnlock,
+          grandStrategyRoundThreeAmibaAnalyzeCycleUnlock,
           projectedAlienScanDataCount,
           grandFangzhouRoundTwoLandUnlock,
           cheatLabRunezuRoundTwoMarsLandUnlock,
@@ -8240,9 +8422,31 @@
         && Math.max(0, aiNumber(resources.availableData)) >= 2
         && bestImmediateMainCashoutScore <= 0
         && !(turnState.passedPlayerIds || []).includes(player.id);
+      const huanyuLowTailDeadHandPickBaseWindow = normalizeAiDifficulty(
+        player?.aiDifficulty || aiAutoBattleState.aiDifficulty,
+      ) === AI_DIFFICULTY_LAUGHABLE
+        && getAiRoundNumber() >= FINAL_ROUND_NUMBER
+        && mainActionOpen
+        && !state.pendingActionExecuted
+        && finalMarks >= 3
+        && !recoveryThreshold
+        && (
+          industryCard?.id === AI_HUANYU_SUPERDRIVE_INDUSTRY_ID
+          || industryCard?.label === AI_HUANYU_SUPERDRIVE_INDUSTRY_LABEL
+        )
+        && currentScore >= 95
+        && currentScore < 120
+        && handSize === 2
+        && credits === 1
+        && energy <= 0
+        && publicity < 3
+        && Math.max(0, aiNumber(resources.availableData)) <= 0
+        && bestImmediateMainCashoutScore <= 0
+        && !(turnState.passedPlayerIds || []).includes(player.id);
       const finalLowStaleHandPlayableScore = (
         finalLowStaleHandRefillBaseWindow
         || grandStrategyLowTailDeadHandPickBaseWindow
+        || huanyuLowTailDeadHandPickBaseWindow
       )
         ? (player.hand || []).reduce((best, card, handIndex) => {
           const candidate = buildAiPlayCardCandidate(card, handIndex, player);
@@ -8438,6 +8642,7 @@
         && !finalLowHandRefillWindow
         && !finalLowStaleHandRefillBaseWindow
         && !grandStrategyLowTailDeadHandPickBaseWindow
+        && !huanyuLowTailDeadHandPickBaseWindow
         && !finalHighScoreHandRefillWindow
         && !finalHighScoreDeadHandRefillBaseWindow
         && !finalPreMainCashoutHandRefillWindow
@@ -8459,6 +8664,7 @@
         && !finalLowHandRefillWindow
         && !finalLowStaleHandRefillBaseWindow
         && !grandStrategyLowTailDeadHandPickBaseWindow
+        && !huanyuLowTailDeadHandPickBaseWindow
         && !finalHighScoreHandRefillWindow
         && !finalHighScoreDeadHandRefillBaseWindow
         && !finalPreMainCashoutHandRefillWindow
@@ -8669,6 +8875,7 @@
       const cardsForPickCardDiscardPlan = (
         finalHighScoreDeadHandRefillBaseWindow
         || grandStrategyLowTailDeadHandPickBaseWindow
+        || huanyuLowTailDeadHandPickBaseWindow
       )
         && cardsForPickCardTrade
         && cardsForPickCardCheck.ok
@@ -8704,6 +8911,16 @@
         && cardsForPickCardDiscardCost <= 6
         && bestPublicTradeCardScore >= 28
         && aiNumber(bestPublicTradeCardProfile.playScore) >= 24
+        && getCardPrice(bestPublicTradeCard?.card) <= credits
+        && bestPublicTradeCardProfile.hasConcreteSignal;
+      const huanyuLowTailDeadHandPickRefill = huanyuLowTailDeadHandPickBaseWindow
+        && finalLowStaleHandPlayableScore < 7
+        && Boolean(cardsForPickCardCheck.ok)
+        && cardsForPickCardHandAfterTrade >= 1
+        && Number.isFinite(cardsForPickCardDiscardCost)
+        && cardsForPickCardDiscardCost <= 6
+        && bestPublicTradeCardScore >= 32
+        && aiNumber(bestPublicTradeCardProfile.playScore) >= 30
         && getCardPrice(bestPublicTradeCard?.card) <= credits
         && bestPublicTradeCardProfile.hasConcreteSignal;
       const finalPreMainCashoutPublicRefill = finalPreMainCashoutHandRefillWindow
@@ -8749,6 +8966,12 @@
           + Math.min(10, bestPublicTradeCardScore * 0.3)
           + Math.min(8, aiNumber(bestPublicTradeCardProfile.playScore) * 0.2)
           + Math.min(4, Math.max(0, aiNumber(resources.availableData)) * 0.8)
+          - Math.min(4, cardsForPickCardDiscardCost * 0.4)
+        : 0;
+      const huanyuLowTailDeadHandPickValue = huanyuLowTailDeadHandPickRefill
+        ? 10
+          + Math.min(12, bestPublicTradeCardScore * 0.3)
+          + Math.min(9, aiNumber(bestPublicTradeCardProfile.playScore) * 0.2)
           - Math.min(4, cardsForPickCardDiscardCost * 0.4)
         : 0;
       const preMainCashoutRefillValue = (finalPreMainCashoutPublicRefill || finalPreMainSecondCashoutPublicRefill)
@@ -9147,12 +9370,17 @@
         },
         {
           tradeId: "cards-for-pick-card",
-          enabled: finalHighScoreDeadHandPickRefill || grandStrategyLowTailDeadHandPickRefill,
+          enabled: finalHighScoreDeadHandPickRefill
+            || grandStrategyLowTailDeadHandPickRefill
+            || huanyuLowTailDeadHandPickRefill,
           value: baseValue
             + finalHighScoreDeadHandPickRefillValue
             + grandStrategyLowTailDeadHandPickValue
+            + huanyuLowTailDeadHandPickValue
             + Math.min(5, Math.max(0, 305 - highScorePushProfile.projectedScore) * 0.06),
-          reason: grandStrategyLowTailDeadHandPickRefill
+          reason: huanyuLowTailDeadHandPickRefill
+            ? "寰宇低尾：弃两张死手牌精选可支付的高收益牌"
+            : grandStrategyLowTailDeadHandPickRefill
             ? "大战略低尾：弃死手牌精选可立即打出的资源链"
             : "高分冲刺：弃死手牌精选可打牌",
         },
@@ -9303,6 +9531,9 @@
               grandStrategyLowTailDeadHandPickBaseWindow,
               grandStrategyLowTailDeadHandPickRefill,
               grandStrategyLowTailDeadHandPickValue: roundAiScore(grandStrategyLowTailDeadHandPickValue),
+              huanyuLowTailDeadHandPickBaseWindow,
+              huanyuLowTailDeadHandPickRefill,
+              huanyuLowTailDeadHandPickValue: roundAiScore(huanyuLowTailDeadHandPickValue),
               cardsForPickCardHandAfterTrade,
               cardsForPickCardDiscardCost: Number.isFinite(cardsForPickCardDiscardCost)
                 ? roundAiScore(cardsForPickCardDiscardCost)
@@ -9407,11 +9638,11 @@
     function countAiStandardScansThisRound(player = getCurrentPlayer()) {
       if (!player) return 0;
       const round = getAiRoundNumber();
-      return (aiAutoBattleState.logs || []).filter((entry) => (
+      return (aiAutoBattleState.turnActionHistory || []).filter((entry) => (
         entry?.type === "turn-action"
         && entry.roundNumber === round
         && entry.playerId === player.id
-        && entry.details?.action?.id === "scan"
+        && entry.action?.id === "scan"
       )).length;
     }
 
@@ -15150,7 +15381,7 @@
         || currentScore >= 140
         || aiNumber(resources.credits) !== 0
         || aiNumber(resources.energy) !== 0
-        || aiNumber(resources.publicity) < 6
+        || aiNumber(resources.publicity) !== 6
         || availableData < 2
         || handSize > 1
         || !player.techState?.ownedTiles?.blue2
@@ -15258,6 +15489,73 @@
       return Math.max(
         0,
         aiNumber(getAiFinalHuanyuPurple4CashoutProfile(candidate, player)?.value),
+      );
+    }
+
+    function getAiGrandStrategyFinalStrandedEnergyCashoutProfile(
+      candidate,
+      player = getCurrentPlayer(),
+    ) {
+      if (
+        !candidate
+        || !player
+        || candidate.tileId !== "purple4"
+        || candidate.bonusId !== "bonus_3f"
+        || getAiRoundNumber() !== FINAL_ROUND_NUMBER
+        || normalizeAiDifficulty(player.aiDifficulty || aiAutoBattleState.aiDifficulty)
+          !== AI_DIFFICULTY_LAUGHABLE
+      ) {
+        return null;
+      }
+      const industryCard = getAiIndustryCard(player);
+      if (
+        industryCard?.id !== AI_GRAND_STRATEGY_INDUSTRY_ID
+        && industryCard?.label !== AI_GRAND_STRATEGY_INDUSTRY_LABEL
+      ) {
+        return null;
+      }
+      const resources = player.resources || {};
+      const hand = player.hand || [];
+      const techCounts = getAiPlayerTechTypeCounts(player);
+      if (
+        countAiFinalMarksForPlayer(player) < 3
+        || getAiNextMissingFinalScoreThreshold(player)
+        || aiNumber(resources.score) < 140
+        || aiNumber(resources.score) >= 160
+        || aiNumber(resources.credits) !== 0
+        || aiNumber(resources.energy) !== 0
+        || aiNumber(resources.publicity) < 6
+        || aiNumber(resources.availableData) !== 0
+        || aiNumber(resources.handSize ?? hand.length) !== 1
+        || hand.length !== 1
+        || countAiPlayerTech(player) !== 9
+        || aiNumber(techCounts.orange) !== 4
+        || aiNumber(techCounts.purple) !== 1
+        || aiNumber(techCounts.blue) !== 4
+      ) {
+        return null;
+      }
+
+      const simulatedPlayer = createAiPlayerAfterResourceGain(player, { energy: 1 });
+      const projectedAnalyzeAvailable = Boolean(
+        simulatedPlayer && canAiAnalyzeData(simulatedPlayer).ok,
+      );
+      if (projectedAnalyzeAvailable) return null;
+      return {
+        value: 1,
+        directScoreGain: 3,
+        strandedEnergyAlternative: 1,
+        projectedAnalyzeAvailable,
+      };
+    }
+
+    function scoreAiGrandStrategyFinalStrandedEnergyCashoutValue(
+      candidate,
+      player = getCurrentPlayer(),
+    ) {
+      return Math.max(
+        0,
+        aiNumber(getAiGrandStrategyFinalStrandedEnergyCashoutProfile(candidate, player)?.value),
       );
     }
 
@@ -15709,6 +16007,7 @@
       value += scoreAiHuanyuRoundTwoBlue4PublicityBridgeValue(candidate, player);
       value += scoreAiFinalHuanyuBlue1AnalyzeRefuelValue(candidate, player);
       value += scoreAiFinalHuanyuPurple4CashoutValue(candidate, player);
+      value += scoreAiGrandStrategyFinalStrandedEnergyCashoutValue(candidate, player);
       value += Math.max(0, 5 - stackIndex) * 0.4;
       value += Math.max(0, getAiRemainingRoundWeight() - 1) * 0.4;
       value += getAiMapDemand(demand.techTypes, techType) * 0.85 * getAiStrategyWeight("tech");
@@ -17747,7 +18046,62 @@
         : { ok: false, message: "当前没有可拾取化石的木星/土星登陆或环绕目标" };
     }
 
-    function canAiResolvePlayCardEffects(playEffects = [], player = getCurrentPlayer()) {
+    function getAiCappedOptionalLaunchProfile(effect, player = getCurrentPlayer()) {
+      if (
+        effect?.type !== "launch"
+        || effect.required
+        || effect.options?.skippable === false
+        || effect.options?.ignoreRocketLimit
+        || !player
+      ) {
+        return null;
+      }
+      const rocketLimit = Math.max(
+        0,
+        Math.round(aiNumber(abilities.rocket.getRocketLimitForPlayer(player, createActionContext()))),
+      );
+      const activeRocketCount = rocketActions.getRocketsForPlayer(rocketState, player.id).length;
+      if (activeRocketCount < rocketLimit) return null;
+      return { activeRocketCount, rocketLimit };
+    }
+
+    function getAiSkippableUnresolvableMoveProfile(
+      effect,
+      nextEffect,
+      player = getCurrentPlayer(),
+    ) {
+      if (
+        effect?.type !== cardEffects.EFFECT_TYPES.CARD_MOVE
+        || effect.required
+        || effect.options?.skippable === false
+        || !nextEffect
+        || isAiLandingEffect(nextEffect)
+        || !player
+      ) {
+        return null;
+      }
+      const industryCard = getAiIndustryCard(player);
+      const currentScore = Math.max(0, Math.round(aiNumber(player.resources?.score)));
+      if (
+        getAiRoundNumber() < FINAL_ROUND_NUMBER
+        || (
+          industryCard?.id !== AI_GRAND_STRATEGY_INDUSTRY_ID
+          && industryCard?.label !== AI_GRAND_STRATEGY_INDUSTRY_LABEL
+        )
+        || countAiFinalMarksForPlayer(player) < 3
+        || currentScore < 100
+        || currentScore > 170
+        || Math.max(0, Math.round(aiNumber(player.resources?.credits))) !== 1
+        || Math.max(0, Math.round(aiNumber(player.resources?.energy))) !== 0
+      ) {
+        return null;
+      }
+      const movableTokens = getMovableTokensForPlayer(player.id);
+      if (movableTokens.length) return null;
+      return { nextEffectType: nextEffect.type || null };
+    }
+
+    function canAiResolvePlayCardEffects(playEffects = [], player = getCurrentPlayer(), options = {}) {
       const context = createActionContext();
       const effectPlayer = player || getCurrentPlayer();
       const unsupportedTypes = new Set([
@@ -17789,12 +18143,13 @@
           const chongCheck = canAiResolveChongTravelEffect(effect, previousEffect);
           if (!chongCheck.ok) return chongCheck;
         }
-        if (effect?.type === "launch" && !effect.options?.ignoreRocketLimit) {
-          const rocketLimit = abilities.rocket.getRocketLimitForPlayer(effectPlayer, context);
-          const activeRocketCount = rocketActions.getRocketsForPlayer(rocketState, effectPlayer.id).length;
-          if (activeRocketCount >= rocketLimit) {
-            return { ok: false, message: `火箭数量已达上限（${activeRocketCount}/${rocketLimit}）` };
-          }
+        const cappedOptionalLaunch = getAiCappedOptionalLaunchProfile(effect, effectPlayer);
+        if (cappedOptionalLaunch) {
+          if (options.allowCappedOptionalLaunchSkip) continue;
+          return {
+            ok: false,
+            message: `火箭数量已达上限（${cappedOptionalLaunch.activeRocketCount}/${cappedOptionalLaunch.rocketLimit}）`,
+          };
         }
         if (effect?.type === cardEffects.EFFECT_TYPES.CARD_ORBIT) {
           const check = actions.canExecute("orbit", context);
@@ -17864,7 +18219,15 @@
             poolRemaining: effect?.options?.movementPoints ?? 1,
             nextEffect,
           });
-          if (!moveCandidates.length) return { ok: false, message: "没有可移动的飞船" };
+          if (!moveCandidates.length) {
+            const skippableMove = getAiSkippableUnresolvableMoveProfile(
+              effect,
+              nextEffect,
+              effectPlayer,
+            );
+            if (skippableMove && options.allowUnresolvableMoveSkip) continue;
+            return { ok: false, message: "没有可移动的飞船" };
+          }
         }
         if (effect?.type === cardEffects.EFFECT_TYPES.CONDITIONAL_SECTOR_SCAN) {
           const sectorXs = getSectorXsMatchingCondition(effect.options?.condition)
@@ -17883,9 +18246,6 @@
       const typeCode = getCardTypeCode(card);
       const model = cardEffects.getCardModel?.(card) || null;
       const playEffects = getAiPlayEffectsForCard(card);
-      const effectCheck = canAiResolvePlayCardEffects(playEffects, currentPlayer);
-      if (!effectCheck.ok) return null;
-      if (getAiRunezuPrematureSymbolCardReason(card, playEffects, currentPlayer)) return null;
       const reservesAfterPlay = doesAiCardReserveAfterPlay(card, typeCode, model);
       const finalFormulaDeltas = getAiPlayCardFinalFormulaDeltas(card, {
         player: currentPlayer,
@@ -17894,21 +18254,42 @@
         reservesAfterPlay,
       });
       const readyTaskCashout = getAiReadyHandTaskCashout(card, model, currentPlayer);
+      const skippedCappedLaunchEffects = readyTaskCashout.count > 0
+        ? playEffects.filter((effect) => getAiCappedOptionalLaunchProfile(effect, currentPlayer))
+        : [];
+      const skippedCappedLaunchSet = new Set(skippedCappedLaunchEffects);
+      const skippedUnresolvableMoveEffects = playEffects.filter((effect, index) => (
+        getAiSkippableUnresolvableMoveProfile(effect, playEffects[index + 1] || null, currentPlayer)
+      ));
+      const skippedUnresolvableMoveSet = new Set(skippedUnresolvableMoveEffects);
+      const skippedUnresolvableEffectSet = new Set([
+        ...skippedCappedLaunchSet,
+        ...skippedUnresolvableMoveSet,
+      ]);
+      const valuationPlayEffects = skippedUnresolvableEffectSet.size > 0
+        ? playEffects.filter((effect) => !skippedUnresolvableEffectSet.has(effect))
+        : playEffects;
+      const effectCheck = canAiResolvePlayCardEffects(playEffects, currentPlayer, {
+        allowCappedOptionalLaunchSkip: skippedCappedLaunchSet.size > 0,
+        allowUnresolvableMoveSkip: skippedUnresolvableMoveSet.size > 0,
+      });
+      if (!effectCheck.ok) return null;
+      if (getAiRunezuPrematureSymbolCardReason(card, playEffects, currentPlayer)) return null;
       const endGameExpectedScore = scoreAiCardEndGameExpectedValue(card, model, currentPlayer);
-      const chongProbeFossilRewardValue = playEffects.some(
+      const chongProbeFossilRewardValue = valuationPlayEffects.some(
         (effect) => effect?.type === chong?.EFFECT_TYPES?.CHONG_PROBE_PLANET_FOSSIL_REWARD,
       )
         ? scoreAiChongProbePlanetFossilRewardValue(currentPlayer)
         : null;
-      const plan = scoreAiPlayCardRoutePlan(card, model, playEffects, currentPlayer);
-      const directScoreGain = getAiRewardDirectScore(playEffects, currentPlayer, { immediate: true });
-      const standardActionPremium = scoreAiCardStandardActionPremium(playEffects, currentPlayer);
+      const plan = scoreAiPlayCardRoutePlan(card, model, valuationPlayEffects, currentPlayer);
+      const directScoreGain = getAiRewardDirectScore(valuationPlayEffects, currentPlayer, { immediate: true });
+      const standardActionPremium = scoreAiCardStandardActionPremium(valuationPlayEffects, currentPlayer);
       const readyTaskTechReplacementValue = scoreAiReadyTaskTechReplacementValue(
-        playEffects,
+        valuationPlayEffects,
         readyTaskCashout,
         currentPlayer,
       );
-      const effectValue = playEffects.reduce((total, effect) => (
+      const effectValue = valuationPlayEffects.reduce((total, effect) => (
         total + scoreAiEffectValue(effect, { player: currentPlayer, immediate: true })
       ), 0);
       const strategyPassivePlayValue = scoreAiStrategyPassiveCardPlayValue(card, currentPlayer);
@@ -17938,7 +18319,7 @@
       const lateCardEnginePressure = scoreAiLatePlayCardEnginePressure(card, {
         player: currentPlayer,
         model,
-        playEffects,
+        playEffects: valuationPlayEffects,
         typeCode,
         endGameExpectedScore,
         plan,
@@ -17947,7 +18328,7 @@
       const playCardConversionPressure = scoreAiPlayCardConversionPressure(card, {
         player: currentPlayer,
         model,
-        playEffects,
+        playEffects: valuationPlayEffects,
         typeCode,
         endGameExpectedScore,
         plan,
@@ -17969,7 +18350,7 @@
       const grandStrategyCreditBottleneckPenalty = scoreAiGrandStrategyCreditBottleneckPenalty(card, {
         player: currentPlayer,
         actualHandPlay,
-        playEffects,
+        playEffects: valuationPlayEffects,
         cost,
         directScoreGain,
         standardActionPremium,
@@ -17998,7 +18379,7 @@
       const score = scoreAiPlayCardValue(card, {
         player: currentPlayer,
         model,
-        playEffects,
+        playEffects: valuationPlayEffects,
         cost,
         price,
         typeCode,
@@ -18096,6 +18477,10 @@
           readyTaskCashoutCount: readyTaskCashout.count,
           readyTaskCashoutTimingScale: getAiReadyTaskCashoutTimingScale(),
           readyTaskTechReplacementValue,
+          skippedUnresolvableLaunchForReadyTask: skippedCappedLaunchSet.size > 0,
+          skippedUnresolvableLaunchCount: skippedCappedLaunchSet.size,
+          skippedUnresolvableMoveBeforeLaterEffect: skippedUnresolvableMoveSet.size > 0,
+          skippedUnresolvableMoveCount: skippedUnresolvableMoveSet.size,
           chongTaskChainValue,
           banrenmaThresholdSetupValue,
           playCardConversionPressure,
@@ -21806,6 +22191,8 @@
           getAiFinalHuanyuBlue1AnalyzeRefuelProfile(candidate, getCurrentPlayer()),
         finalHuanyuPurple4Cashout:
           getAiFinalHuanyuPurple4CashoutProfile(candidate, getCurrentPlayer()),
+        grandStrategyFinalStrandedEnergyCashout:
+          getAiGrandStrategyFinalStrandedEnergyCashoutProfile(candidate, getCurrentPlayer()),
       };
       if (candidate.tileId === "orange4") {
         candidate.valueBreakdown.orange4SatelliteProfile = getAiOrange4SatellitePotentialProfile(getCurrentPlayer());
@@ -22524,12 +22911,12 @@
 
     function countAiRepeatedNegativeResourceCardCornersThisTurn(playerId = getCurrentPlayer()?.id) {
       if (!playerId) return 0;
-      return (aiAutoBattleState.logs || []).filter((entry) => (
+      return (aiAutoBattleState.turnActionHistory || []).filter((entry) => (
         entry?.type === "turn-action"
         && entry.roundNumber === turnState.roundNumber
         && entry.rawTurnNumber === turnState.turnNumber
         && entry.playerId === playerId
-        && isRawNegativeResourceCardCornerAction(entry.details?.action)
+        && isRawNegativeResourceCardCornerAction(entry.action)
       )).length;
     }
 
@@ -22549,12 +22936,12 @@
 
     function hasAiPassActionThisTurn(playerId = getCurrentPlayer()?.id) {
       if (!playerId) return false;
-      return (aiAutoBattleState.logs || []).some((entry) => (
+      return (aiAutoBattleState.turnActionHistory || []).some((entry) => (
         entry?.type === "turn-action"
         && entry.roundNumber === turnState.roundNumber
         && entry.rawTurnNumber === turnState.turnNumber
         && entry.playerId === playerId
-        && entry.details?.action?.id === "pass"
+        && entry.action?.id === "pass"
       ));
     }
 
@@ -22795,6 +23182,89 @@
           && candidate.available !== false
         )) || null
         : null;
+      const finalFullComputerAnalyzeEnergyDrainProfile = (() => {
+        if (
+          !readyAnalyzeCandidate
+          || !readyScanCandidate
+          || round !== FINAL_ROUND_NUMBER
+          || normalizeAiDifficulty(currentPlayer?.aiDifficulty || aiAutoBattleState.aiDifficulty)
+            !== AI_DIFFICULTY_LAUGHABLE
+          || countAiFinalMarksForPlayer(currentPlayer) < 3
+        ) {
+          return null;
+        }
+        const resources = currentPlayer?.resources || {};
+        const currentScore = Math.max(0, aiNumber(resources.score));
+        const credits = Math.max(0, aiNumber(resources.credits));
+        const energy = Math.max(0, aiNumber(resources.energy));
+        const publicity = Math.max(0, aiNumber(resources.publicity));
+        const handSize = Math.max(0, Math.round(aiNumber(resources.handSize)));
+        const availableData = Math.max(0, Math.round(aiNumber(resources.availableData)));
+        const requiredSlot = Math.max(1, Math.round(aiNumber(data.ANALYZE_REQUIRED_COMPUTER_SLOT || 6)));
+        const placedCount = Math.max(0, (data.listComputerPlacedTokens?.(currentPlayer) || []).length);
+        const scanCost = scanEffects?.getStandardScanCost?.(currentPlayer)
+          || scanEffects?.SCAN_COST
+          || { credits: 1, energy: 2 };
+        const scanCreditCost = Math.max(0, aiNumber(scanCost.credits));
+        const scanEnergyCost = Math.max(0, aiNumber(scanCost.energy));
+        const creditsAfterScan = credits - scanCreditCost;
+        const energyAfterScan = energy - scanEnergyCost;
+        const analyzeScore = aiNumber(readyAnalyzeCandidate.score);
+        const analyzeGraphNet = Number(readyAnalyzeCandidate.actionGraph?.net);
+        const scanScore = aiNumber(readyScanCandidate.score);
+        const scanGraphNet = Number(readyScanCandidate.actionGraph?.net);
+        const scanDirectScore = Math.max(0, aiNumber(readyScanCandidate.directScoreGain));
+        const analyzeDirectScore = Math.max(0, aiNumber(readyAnalyzeCandidate.directScoreGain));
+        const recoveryTrade = ["credits-for-energy", "cards-for-energy"]
+          .map((tradeId) => quickTrades?.getTradeAction?.(tradeId) || null)
+          .find((trade) => {
+            if (!trade) return false;
+            const cost = trade.cost || {};
+            const gain = trade.gain || {};
+            return creditsAfterScan >= Math.max(0, aiNumber(cost.credits))
+              && handSize >= Math.max(0, Math.round(aiNumber(cost.handSize)))
+              && publicity >= Math.max(0, aiNumber(cost.publicity))
+              && energyAfterScan >= Math.max(0, aiNumber(cost.energy))
+              && energyAfterScan
+                - Math.max(0, aiNumber(cost.energy))
+                + Math.max(0, aiNumber(gain.energy)) >= readyAnalyzeEnergyCost;
+          }) || null;
+        if (
+          currentScore < 120
+          || placedCount < requiredSlot
+          || availableData < 3
+          || readyAnalyzeEnergyCost <= 0
+          || scanEnergyCost <= 0
+          || creditsAfterScan < 0
+          || energy < scanEnergyCost
+          || energyAfterScan >= readyAnalyzeEnergyCost
+          || recoveryTrade
+          || analyzeScore < 18
+          || scanScore >= analyzeScore
+          || scanDirectScore > analyzeDirectScore + 2
+        ) {
+          return null;
+        }
+        return {
+          currentScore: roundAiScore(currentScore),
+          analyzeScore: roundAiScore(analyzeScore),
+          analyzeNet: roundAiScore(Number.isFinite(analyzeGraphNet) ? analyzeGraphNet : analyzeScore),
+          analyzeEnergyCost: readyAnalyzeEnergyCost,
+          scanScore: roundAiScore(scanScore),
+          scanNet: roundAiScore(Number.isFinite(scanGraphNet) ? scanGraphNet : scanScore),
+          scanDirectScore: roundAiScore(scanDirectScore),
+          analyzeDirectScore: roundAiScore(analyzeDirectScore),
+          requiredSlot,
+          placedCount,
+          availableData,
+          scanCost: {
+            credits: scanCreditCost,
+            energy: scanEnergyCost,
+          },
+          creditsAfterScan: roundAiScore(creditsAfterScan),
+          energyAfterScan: roundAiScore(energyAfterScan),
+        };
+      })();
       const finalAnalyzeBeforeRecoverableScanProfile = (() => {
         if (
           !readyAnalyzeCandidate
@@ -23215,6 +23685,43 @@
               },
             };
           }
+        }
+        if (
+          candidate.id === "scan"
+          && finalFullComputerAnalyzeEnergyDrainProfile
+        ) {
+          const analyzeScore = aiNumber(readyAnalyzeCandidate.score);
+          const analyzeGraphNet = Number(readyAnalyzeCandidate.actionGraph?.net);
+          const scoreCap = roundAiScore(analyzeScore - 0.25);
+          const netCap = roundAiScore(
+            (Number.isFinite(analyzeGraphNet) ? analyzeGraphNet : analyzeScore) - 0.25,
+          );
+          const currentScore = aiNumber(adjusted.score);
+          const currentNet = Number(adjusted.actionGraph?.net);
+          adjusted = {
+            ...adjusted,
+            score: Math.min(currentScore, scoreCap),
+            scoreCapReason: "终局满计算机先分析，避免扫描耗尽能量",
+            actionGraph: adjusted.actionGraph
+              ? {
+                ...adjusted.actionGraph,
+                uncappedFullComputerAnalyzeEnergyDrainNet: adjusted.actionGraph.net,
+                net: Math.min(Number.isFinite(currentNet) ? currentNet : currentScore, netCap),
+              }
+              : adjusted.actionGraph,
+            selectionAdjustment: {
+              ...(adjusted.selectionAdjustment || {}),
+              finalFullComputerAnalyzeEnergyDrain: {
+                ...finalFullComputerAnalyzeEnergyDrainProfile,
+                originalScore: roundAiScore(aiNumber(candidate.score)),
+                originalNet: Number.isFinite(graphNet) ? roundAiScore(graphNet) : null,
+              },
+            },
+            valueBreakdown: {
+              ...(adjusted.valueBreakdown || {}),
+              finalFullComputerAnalyzeEnergyDrain: true,
+            },
+          };
         }
         if (
           candidate.id === "scan"
@@ -24251,6 +24758,21 @@
         activateNextActionEffect?.();
         return { ok: true, progressed: true, advancedCompletedEffect: true };
       }
+      const cappedOptionalLaunch = getAiCappedOptionalLaunchProfile(
+        effect,
+        getEffectOwnerPlayer(effect) || getCurrentPlayer(),
+      );
+      if (cappedOptionalLaunch) {
+        const message = `${effect.label || "发射"}：火箭数量已达上限（${cappedOptionalLaunch.activeRocketCount}/${cappedOptionalLaunch.rocketLimit}），已跳过`;
+        recordAiAutoBattleLog("effect-skip", message, {
+          logPlayerId: playerId || null,
+          effectId: effect.id || null,
+          effectType: effect.type || null,
+          reason: "rocket-limit",
+        });
+        const skipped = skipCurrentActionEffect?.();
+        return skipped || { ok: true, progressed: true, skipped: true, message };
+      }
       if (
         effect.type === cardEffects.EFFECT_TYPES.CARD_MOVE
         || effect.type === cardEffects.EFFECT_TYPES.FREE_MOVE
@@ -24663,6 +25185,7 @@
 
     function summarizeAiTurnActionCandidate(candidate = {}) {
       const breakdown = candidate.breakdown || candidate.valueBreakdown || null;
+      const policyScore = roundAiScore(getAiCandidateRankScore(candidate));
       const compactBreakdown = breakdown
         ? Object.fromEntries(Object.entries(breakdown).filter(([, value]) => (
           Number.isFinite(Number(value)) || typeof value === "string" || typeof value === "boolean"
@@ -24677,7 +25200,8 @@
         label: candidate.label || getAiCardDisplayLabel(candidate) || candidate.planetName || null,
         cardId: candidate.cardId || null,
         cardInstanceId: candidate.cardInstanceId || null,
-        score: roundAiScore(getAiCandidateRankScore(candidate)),
+        score: policyScore,
+        policyScore,
         directScoreGain: roundAiScore(candidate.directScoreGain || 0),
         finalMarginal: roundAiScore(candidate.actionGraph?.finalMarginal ?? candidate.finalMarginal ?? 0),
         goalBonus: roundAiScore(candidate.actionGraph?.goalBonus ?? candidate.goalBonus ?? 0),
@@ -24960,10 +25484,10 @@
           rewardLabel: entry.details.rewardLabel || null,
           choices: entry.details.choices || [],
         })) : [];
-      const initialIncomeDiscardDecisions = includeDiagnostics ? reportLogs
+      const incomeDiscardDecisions = includeDiagnostics ? reportLogs
         .filter((entry) => (
           entry?.type === "discard"
-          && entry.details?.pendingType === "initial_income"
+          && isAiIncomeDiscardType(entry.details?.pendingType)
         ))
         .map((entry) => ({
           roundNumber: entry.roundNumber ?? null,
@@ -24975,18 +25499,22 @@
           incomeGainByIndex: entry.details?.incomeGainByIndex || [],
           incomeDiscardPreview: entry.details?.incomeDiscardPreview || null,
         })) : [];
+      const initialIncomeDiscardDecisions = incomeDiscardDecisions
+        .filter((entry) => entry.incomeDiscardPreview?.pendingType === "initial_income");
       return {
         gameIndex,
         summary: report?.lastSummary || null,
         seed: report?.lastSummary?.seed || null,
         bugCount: Array.isArray(report?.bugs) ? report.bugs.length : 0,
         playerResults: report?.playerResults || [],
+        resourceFlow: report?.resourceFlow || null,
         pendingState: report?.pendingState || null,
         lowMarkPlayerDiagnostics: lowMarkPlayerDiagnosticsList[0] || null,
         lowMarkPlayerDiagnosticsList,
         finalScoreMarkDecisions,
         grandStrategyPickDecisions,
         grandStrategyPassiveDecisions,
+        incomeDiscardDecisions,
         initialIncomeDiscardDecisions,
         tailLogs: Array.isArray(report?.logs) ? report.logs.slice(-5) : [],
         ...(options.includeLogs && Array.isArray(report?.logs) ? { logs: report.logs } : {}),
@@ -25115,6 +25643,14 @@
       const summary = retainAnalysis && ai?.analytics?.summarizeBattleAnalyses
         ? ai.analytics.summarizeBattleAnalyses(analyses, { sequenceWindowTurns: options.sequenceWindowTurns })
         : null;
+      const resourceFlow = ai?.resourceFlow?.summarizeResourceFlowAnalyses
+        ? ai.resourceFlow.summarizeResourceFlowAnalyses(
+          samples.map((sample) => sample.resourceFlow).filter(Boolean),
+        )
+        : null;
+      if (summary && resourceFlow?.headline) {
+        summary.resourceFlowHeadline = resourceFlow.headline;
+      }
       const blockedGames = samples.filter((sample) => sample.summary?.blocked || sample.bugCount > 0).length;
       const incompleteGames = samples.filter((sample) => (
         (!sample.summary?.gameEnded && !sample.summary?.stoppedBeforeRound)
@@ -25143,6 +25679,7 @@
         summary,
         strategyTuningHistoryEntry,
         strategyTuningRecommendation,
+        resourceFlow,
         samples,
       });
     }
